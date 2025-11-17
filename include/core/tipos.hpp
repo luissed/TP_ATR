@@ -1,26 +1,26 @@
 #ifndef CORE_TIPOS_HPP
 #define CORE_TIPOS_HPP
 
-struct Sensores {
-    int i_posicao_x;
-    int i_posicao_y;
-    int i_angulo_x;
-    int i_temperatura;
+struct SensoresCaminhao {
+    int  i_posicao_x;
+    int  i_posicao_y;
+    int  i_angulo_x;
+    int  i_temperatura;
     bool i_falha_eletrica;
     bool i_falha_hidraulica;
 };
 
-struct Atuadores {
+struct AtuadoresCaminhao {
     int o_aceleracao;
     int o_direcao;
 };
 
-struct Estados {
+struct EstadosCaminhao {
     bool e_defeito;
     bool e_automatico;
 };
 
-struct Comandos {
+struct ComandosCaminhao {
     bool c_automatico;
     bool c_man;
     bool c_rearme;
@@ -29,12 +29,18 @@ struct Comandos {
     bool c_esquerda;
 };
 
-struct EstadoCaminhao {
+struct EventosFalhasCaminhao {
+    bool ev_falha_eletrica;    // evento de falha elétrica
+    bool ev_falha_hidraulica;  // evento de falha hidráulica
+    bool ev_sobretemperatura;  // evento de temperatura acima do limite
+};
+
+struct InfoCaminhao {
     int id_caminhao;
-    Sensores sensores;
-    Atuadores atuadores;
-    Estados estados;
-    Comandos comandos;
+    SensoresCaminhao sensores;
+    AtuadoresCaminhao atuadores;
+    EstadosCaminhao  estados;
+    ComandosCaminhao comandos;
 };
 
 #endif
