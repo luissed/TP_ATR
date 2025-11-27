@@ -1,0 +1,3 @@
+/home/joelcarlos/ATR/TP_ATR/build/CMakeFiles/caminhoes_autonomos.dir
+/home/joelcarlos/ATR/TP_ATR/build/CMakeFiles/edit_cache.dir
+/home/joelcarlos/ATR/TP_ATR/build/CMakeFiles/rebuild_cache.dir

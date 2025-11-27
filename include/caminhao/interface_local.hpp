@@ -3,6 +3,7 @@
 
 #include "caminhao/caminhao.hpp"
 
+struct CaminhaoContext;
 void tarefa_interface_local(CaminhaoContext* ctx); // Interface Local mostra ctx->info para o operador local, atualiza ctx->info.comandos
 
 #endif

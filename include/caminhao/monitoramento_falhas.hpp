@@ -3,6 +3,7 @@
 
 #include "caminhao/caminhao.hpp"
 
+struct CaminhaoContext;
 void tarefa_monitoramento_falhas(CaminhaoContext* ctx); // Monitoramento de Falhas, lê ctx.info.sensores, detecta condições de falha, escreve eventos em ctx.eventos
 
 #endif

@@ -30,9 +30,9 @@ struct ComandosCaminhao {
 };
 
 struct EventosFalhasCaminhao {
-    bool ev_falha_eletrica;    // evento de falha elétrica
-    bool ev_falha_hidraulica;  // evento de falha hidráulica
-    bool ev_sobretemperatura;  // evento de temperatura acima do limite
+    bool ev_falha_eletrica;
+    bool ev_falha_hidraulica;
+    bool ev_sobretemperatura;
 };
 
 struct InfoCaminhao {
