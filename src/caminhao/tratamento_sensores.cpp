@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 #include "caminhao/tratamento_sensores.hpp"
 #include "caminhao/contexto.hpp"
 #include "core/buffer.hpp"
@@ -76,4 +77,53 @@ void tarefa_tratamento_sensores(CaminhaoContext* ctx) {
     }
     
     mqtt_client.desconectar();
+=======
+// caminhao/tratamento_sensores.cpp
+#include "caminhao/tratamento_sensores.hpp"
+#include <iostream>
+#include <chrono>
+#include <thread>
+
+// Simula a leitura e filtragem dos sensores (PRODUTOR)
+void tarefa_tratamento_sensores(CaminhaoContext* ctx) {
+    while (ctx->rodando) {
+        // --- 1. Leitura Simulada e Processamento (FORA da Seção Crítica) ---
+        SensoresCaminhao nova_leitura = { 
+            /* simulação de leitura com ruído */
+            .i_posicao_x = rand() % 100, 
+            .i_posicao_y = rand() % 100,
+            .i_angulo_x = rand() % 360,
+            .i_temperatura = 90, // Simulação de temperatura
+            .i_falha_eletrica = false,
+            .i_falha_hidraulica = false
+        };
+        
+        InfoCaminhao nova_info = ctx->info;
+        nova_info.sensores = nova_leitura;
+
+        // --- 2. Inserção no Buffer (SEÇÃO CRÍTICA) ---
+        std::unique_lock<std::mutex> lock(ctx->mtx_buffer);
+
+        // Espera de Condição (Evita Busy Waiting): Dorme se o buffer estiver cheio
+        // Predicado: Buffer cheio (count == SIZE)?
+        ctx->cv_buffer_vazio.wait(lock, [ctx] {
+            return ctx->buffer.count < BufferCircular::SIZE; 
+        });
+
+        // Insere o novo dado no buffer circular
+        ctx->buffer.dados[ctx->buffer.in] = nova_info;
+        ctx->buffer.in = (ctx->buffer.in + 1) % BufferCircular::SIZE;
+        ctx->buffer.count++;
+        
+        std::cout << "[T1: SENSORES] Produziu amostra. Itens no buffer: " << ctx->buffer.count << std::endl;
+
+        // Sinaliza que há um slot cheio (acorda consumidores)
+        ctx->cv_buffer_cheio.notify_all(); 
+
+        lock.unlock(); // Libera o Mutex
+
+        // Período de execução da tarefa (50ms - Hard Real-Time)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+>>>>>>> Stashed changes
 }
