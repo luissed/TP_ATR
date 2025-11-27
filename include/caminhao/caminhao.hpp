@@ -2,7 +2,7 @@
 #define CAMINHAO_CAMINHAO_HPP
 
 #include <thread>
-#include "core/tipos.hpp"
+#include "../core/tipos.hpp"
 
 struct CaminhaoContext { // contexto com tudo que as threads do caminhão compartilham
     InfoCaminhao info; // info atual do caminhão, informação dos sensores, atuadores, estados, comandos
