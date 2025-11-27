@@ -3,7 +3,6 @@
 
 #include "caminhao/caminhao.hpp"
 
-struct CaminhaoContext;
 void tarefa_coletor_dados(CaminhaoContext* ctx); // Coletor de Dados, lê ctx.info, lê ctx.eventos para registrar quando falhas ocorreram, grava essas informações
 
 #endif

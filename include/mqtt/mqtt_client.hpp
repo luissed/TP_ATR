@@ -1,50 +1,75 @@
 #ifndef MQTT_MQTT_CLIENT_HPP
 #define MQTT_MQTT_CLIENT_HPP
 
+#include <mqtt/async_client.h>
 #include <string>
 #include <iostream>
-#include <type_traits>
-#include "core/tipos.hpp"
+#include <functional>
 
 class MQTTClient {
 private:
+    mqtt::async_client* cliente;
     std::string id;
     bool conectado;
 
 public:
-    MQTTClient() : conectado(false) {}
+    MQTTClient() : cliente(nullptr), conectado(false) {}
+    ~MQTTClient() { desconectar(); }
     
     bool conectar(const std::string& broker, int port, const std::string& client_id) {
-        id = client_id;
-        conectado = true;
-        std::cout << "[MQTT SIM] Conectado: " << client_id << " em " << broker << ":" << port << std::endl;
-        return true;
+        try {
+            std::string endereco = "tcp://" + broker + ":" + std::to_string(port);
+            cliente = new mqtt::async_client(endereco, client_id);
+            
+            auto connOpts = mqtt::connect_options_builder()
+                .clean_session(true)
+                .finalize();
+            
+            cliente->connect(connOpts)->wait();
+            conectado = true;
+            std::cout << "[MQTT] " << client_id << " conectado" << std::endl;
+            return true;
+        } catch (const mqtt::exception& exc) {
+            std::cerr << "[MQTT] Erro: " << exc.what() << std::endl;
+            return false;
+        }
     }
     
-    template<typename T>
-    void publicar(const std::string& topic, const T& data) {
-        if (!conectado) return;
+    void publicar(const std::string& topic, const std::string& mensagem) {
+        if (!conectado || !cliente) return;
         
-        std::cout << "[MQTT SIM] Publicando em " << topic;
+        try {
+            auto msg = mqtt::make_message(topic, mensagem);
+            msg->set_qos(1);
+            cliente->publish(msg)->wait();
+        } catch (const mqtt::exception& exc) {
+            std::cerr << "[MQTT] Erro publicando: " << exc.what() << std::endl;
+        }
+    }
+    
+    void subscrever(const std::string& topic, std::function<void(const std::string&)> callback) {
+        if (!conectado || !cliente) return;
         
-        if constexpr (std::is_same_v<T, SensoresCaminhao>) {
-            std::cout << " [Sensores: x=" << data.i_posicao_x << ", y=" << data.i_posicao_y 
-                      << ", ang=" << data.i_angulo_x << "°, temp=" << data.i_temperatura << "°C]" << std::endl;
-        } else if constexpr (std::is_same_v<T, EstadosCaminhao>) {
-            std::cout << " [Estados: auto=" << data.e_automatico << ", defeito=" << data.e_defeito << "]" << std::endl;
-        } else if constexpr (std::is_same_v<T, AtuadoresCaminhao>) {
-            std::cout << " [Atuadores: acel=" << data.o_aceleracao << "%, dir=" << data.o_direcao << "°]" << std::endl;
-        } else {
-            std::cout << " [Dados serializados]" << std::endl;
+        try {
+            cliente->subscribe(topic, 1)->wait();
+            
+            cliente->set_message_callback([callback](mqtt::const_message_ptr msg) {
+                callback(msg->get_payload_str());
+            });
+            
+        } catch (const mqtt::exception& exc) {
+            std::cerr << "[MQTT] Erro inscrevendo: " << exc.what() << std::endl;
         }
     }
     
     void desconectar() {
-        conectado = false;
-        std::cout << "[MQTT SIM] Desconectado: " << id << std::endl;
+        if (cliente && conectado) {
+            cliente->disconnect()->wait();
+            delete cliente;
+            cliente = nullptr;
+            conectado = false;
+        }
     }
-    
-    bool esta_conectado() const { return conectado; }
 };
 
 #endif

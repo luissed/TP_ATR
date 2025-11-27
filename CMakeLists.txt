@@ -4,25 +4,35 @@ project(TP_ATR)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+find_package(PahoMqttCpp REQUIRED)
 
 include_directories(include)
 
-set(SOURCE_FILES
-    src/main.cpp
-    src/caminhao/caminhao.cpp
-    src/caminhao/tratamento_sensores.cpp
-    src/caminhao/logica_comando.cpp
-    src/caminhao/monitoramento_falhas.cpp
-    src/caminhao/controle_navegacao.cpp
-    src/caminhao/coletor_dados.cpp
-    src/caminhao/interface_local.cpp
+# PROCESSO CAMINHÃO (com múltiplas tarefas/threads)
+set(CAMINHAO_SOURCES
+    src/processo_caminhao/main.cpp
+    src/processo_caminhao/caminhao.cpp
+    src/processo_caminhao/tratamento_sensores.cpp
+    src/processo_caminhao/logica_comando.cpp
+    src/processo_caminhao/monitoramento_falhas.cpp
+    src/processo_caminhao/controle_navegacao.cpp
+    src/processo_caminhao/coletor_dados.cpp
+    src/processo_caminhao/interface_local.cpp
 )
 
-add_executable(caminhoes_autonomos ${SOURCE_FILES})
+add_executable(processo_caminhao ${CAMINHAO_SOURCES})
+target_link_libraries(processo_caminhao PahoMqttCpp::PahoMqttCpp pthread)
 
-if(UNIX AND NOT APPLE)
-    target_link_libraries(caminhoes_autonomos pthread)
-endif()
+# PROCESSO GESTÃO MINA
+add_executable(processo_gestao
+    src/processo_gestao/main.cpp
+    src/processo_gestao/gestao_mina.cpp
+)
+target_link_libraries(processo_gestao PahoMqttCpp::PahoMqttCpp)
 
-message(STATUS "Projeto configurado com sucesso! Use 'make' para compilar.")
+# PROCESSO SIMULAÇÃO MINA
+add_executable(processo_simulacao
+    src/processo_simulacao/main.cpp
+    src/processo_simulacao/simulacao_mina.cpp
+)
+target_link_libraries(processo_simulacao PahoMqttCpp::PahoMqttCpp)

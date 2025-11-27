@@ -41,6 +41,7 @@ struct InfoCaminhao {
     AtuadoresCaminhao atuadores;
     EstadosCaminhao  estados;
     ComandosCaminhao comandos;
+    EventosFalhasCaminhao eventos;
 };
 
 #endif

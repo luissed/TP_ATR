@@ -50,21 +50,6 @@ public:
         cv_cheio.notify_one();
         return true;
     }
-
-    size_t tamanho() const {
-        std::lock_guard<std::mutex> lock(mtx);
-        return contador;
-    }
-
-    bool vazio() const {
-        std::lock_guard<std::mutex> lock(mtx);
-        return contador == 0;
-    }
-
-    bool cheio() const {
-        std::lock_guard<std::mutex> lock(mtx);
-        return contador == capacidade;
-    }
 };
 
 #endif
