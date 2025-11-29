@@ -1,4 +1,3 @@
-// src/FilaEventos.cpp
 #include "FilaEventos.hpp"
 
 void FilaEventos::postar(const Evento& evento) {

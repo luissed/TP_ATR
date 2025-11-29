@@ -1,4 +1,3 @@
-// src/BufferCircular.cpp
 #include "BufferCircular.hpp"
 
 BufferCircular::BufferCircular(std::size_t capacidade)
@@ -11,15 +10,17 @@ void BufferCircular::inserir(const RegistroBuffer& registro) {
     std::lock_guard<std::mutex> lock(mtx_);
 
     if (capacidade_ == 0) {
-        return;
+        return; // nada a fazer
     }
 
+    // posição onde vamos escrever: (inicio_ + quantidade_) % capacidade_
     std::size_t idxEscrita = (inicio_ + quantidade_) % capacidade_;
     dados_[idxEscrita] = registro;
 
     if (quantidade_ < capacidade_) {
         ++quantidade_;
     } else {
+        // buffer cheio: avançamos o "início" para descartar o mais antigo
         inicio_ = (inicio_ + 1) % capacidade_;
     }
 }
