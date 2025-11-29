@@ -1,0 +1,77 @@
+--- INICIO DA OPERACAO ---
+[2025-11-26 21:24:13] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:13] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:13] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,0
+[2025-11-26 21:24:13] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,2
+[2025-11-26 21:24:13] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 1,1
+[2025-11-26 21:24:14] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:14] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:14] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 10,10
+[2025-11-26 21:24:14] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,22
+[2025-11-26 21:24:14] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 11,11
+[2025-11-26 21:24:15] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:15] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:15] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 21,21
+[2025-11-26 21:24:15] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:15] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 21,21
+[2025-11-26 21:24:16] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:16] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:16] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 31,31
+[2025-11-26 21:24:16] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:16] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 31,31
+[2025-11-26 21:24:17] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:17] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:17] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 41,41
+[2025-11-26 21:24:17] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:17] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 41,41
+[2025-11-26 21:24:18] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:18] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:18] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:18] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:18] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 51,51
+[2025-11-26 21:24:19] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:19] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:19] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:19] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:19] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 61,61
+[2025-11-26 21:24:20] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:20] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:20] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:20] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:20] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 71,71
+[2025-11-26 21:24:21] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:21] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:21] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:21] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:21] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 81,81
+[2025-11-26 21:24:22] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:22] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:22] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:22] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:22] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 91,91
+[2025-11-26 21:24:23] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:23] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:23] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:23] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:23] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 100,100
+[2025-11-26 21:24:24] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:24] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:24] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:24] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:24] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 100,100
+[2025-11-26 21:24:25] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:25] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:25] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:25] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:25] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 100,100
+[2025-11-26 21:24:26] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:26] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:26] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:26] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:26] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 100,100
+[2025-11-26 21:24:27] ID:101 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:27] ID:102 Auto:NAO Pos:(0,0) MSG: Status Periodico
+[2025-11-26 21:24:27] ID:101 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 50,50
+[2025-11-26 21:24:27] ID:102 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 0,40
+[2025-11-26 21:24:27] ID:103 Auto:NAO Pos:(0,0) MSG: Monitoramento Periodico - Pos: 100,100
+--- FIM DA OPERACAO ---

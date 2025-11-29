@@ -1,8 +1,27 @@
-#ifndef CAMINHAO_COLETOR_DADOS_HPP
-#define CAMINHAO_COLETOR_DADOS_HPP
+#pragma once
+#include "../core/buffer.hpp"
+#include <fstream>
+#include <string>
+#include <mutex>
 
-#include "caminhao/caminhao.hpp"
+class ColetorDados {
+private:
+    Buffer& buffer;
+    std::ofstream arquivo_log;
+    std::mutex mtx_arquivo;
+    bool ativo;
 
-void tarefa_coletor_dados(CaminhaoContext* ctx); // Coletor de Dados, lê ctx.info, lê ctx.eventos para registrar quando falhas ocorreram, grava essas informações
+    // Função para pegar hora atual formatada
+    std::string getTimestamp();
 
-#endif
+public:
+    ColetorDados(Buffer& b);
+    ~ColetorDados();
+    
+    // Registra um evento no arquivo
+    void log(int id_caminhao, const std::string& evento);
+    
+    // Loop que fica monitorando e salvando estados periodicamente
+    void loop(); 
+    void parar();
+};

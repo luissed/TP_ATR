@@ -29,6 +29,13 @@ struct ComandosCaminhao {
     bool c_esquerda;
 };
 
+//guardando rotas 
+struct NavegacaoCaminhao {
+int x_setpoint;
+int y_setpoint; 
+bool chegou; //sinalizar conclusão 
+};
+
 struct EventosFalhasCaminhao {
     bool ev_falha_eletrica;    // evento de falha elétrica
     bool ev_falha_hidraulica;  // evento de falha hidráulica
@@ -41,6 +48,8 @@ struct InfoCaminhao {
     AtuadoresCaminhao atuadores;
     EstadosCaminhao  estados;
     ComandosCaminhao comandos;
+    NavegacaoCaminhao navegacao;
+
 };
 
 #endif
