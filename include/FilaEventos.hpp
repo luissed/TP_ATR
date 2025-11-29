@@ -6,22 +6,23 @@
 #include <cstddef>
 #include "Tipos.hpp"
 
-// Fila de eventos thread-safe.
-// Permite que uma tarefa poste eventos e outras esperem por eles.
+// fila de eventos thread safe usada pra troca de eventos entre tarefas
+// uma tarefa posta eventos aqui e outras podem esperar ou tentar ler sem travar
 class FilaEventos {
 public:
     FilaEventos() = default;
 
-    // Posta (insere) um novo evento na fila e acorda quem estiver esperando.
+    // posta um novo evento na fila e acorda quem estiver esperando
     void postar(const Evento& evento);
 
-    // Bloqueia até haver pelo menos um evento, e então retorna o primeiro.
+    // bloqueia ate existir pelo menos um evento na fila e retorna o primeiro
     Evento esperarProximo();
 
-    // Tenta retirar um evento sem bloquear.
-    // Retorna true se conseguiu pegar algum evento.
+    // tenta retirar um evento sem bloquear
+    // retorna true se conseguiu pegar algum evento
     bool tentarRetirar(Evento& out);
 
+    // retorna o tamanho atual da fila de eventos
     std::size_t tamanho() const;
 
 private:

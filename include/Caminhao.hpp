@@ -6,113 +6,134 @@
 #include <cstddef>
 #include <fstream>
 #include <string>
+#include <random>
 
 #include "Tipos.hpp"
 #include "BufferCircular.hpp"
 #include "FilaEventos.hpp"
 
-// Classe que representa um caminhão da mina
+// forward pra declarar amizade entre as classes
+class SimulacaoMina;
+
+// classe que representa um caminhao da mina
 class Caminhao {
+    // simulacaomina pode chamar simularPassoFisico direto
+    friend class SimulacaoMina;
+
 public:
     Caminhao(int id, std::size_t capacidadeBuffer = 100);
     ~Caminhao();
 
-    // Inicia todas as tarefas (threads internas).
+    // inicia todas as tarefas, threads internas
     void iniciar();
 
-    // Pede para todas as tarefas encerrarem e dá join.
+    // pede para todas as tarefas encerrarem e da join
     void parar();
 
     int getId() const;
 
-    // Leitura simples para outras camadas (SimulacaoMina, etc.)
+    // leitura simples para outras camadas, simulacaomina e afins
     EstadoCaminhao lerEstadoLogico() const;
     bool lerUltimoRegistro(RegistroBuffer& out) const;
 
-    // "Interface Local" simulada: comandos do operador (modo / rearme).
+    // interface local simulada, comandos do operador para modo e rearme
     void comandarAutomatico();
     void comandarManual();
     void comandarRearme();
 
-    // Backend do modo MANUAL: comandos contínuos (nível de sinal).
-    // A interface gráfica futura (pygame) vai chamar isso.
+    // backend do modo manual, comandos continuos no nivel de sinal
+    // interface grafica futura tipo pygame vai chamar isso
     void setComandoAcelerar(bool ativo);
     void setComandoDireita(bool ativo);
     void setComandoEsquerda(bool ativo);
 
-    // Funções de TESTE para injetar falhas NA SIMULAÇÃO FÍSICA (sensores).
-    // A tarefa de Monitoramento de Falhas é quem converte isso em eventos.
+    // funcoes de teste pra injetar falhas na simulacao fisica via sensores
+    // tarefa de monitoramento de falhas converte isso em eventos
     void injetarFalhaTemperaturaAlta();
     void injetarFalhaEletrica();
     void injetarFalhaHidraulica();
 
-    // Definir rota: de (x_inicial, y_inicial) para (x_destino, y_destino).
-    // Deve ser chamado antes de iniciar a simulação OU entre cenários.
+    // definir rota de x_inicial e y_inicial para x_destino e y_destino
+    // chamar antes de iniciar a simulacao ou entre cenarios
     void definirRota(int x_inicial, int y_inicial, int x_destino, int y_destino);
 
 private:
-    // ---------- Tarefas internas (cada uma roda em uma thread) ----------
-    void tarefaTratamentoSensores();      // lê estado físico, filtra ruído e alimenta o buffer
-    void tarefaLogicaComando();           // decide e_defeito, e_automatico e estado lógico
-    void tarefaMonitoramentoFalhas();     // monitora temperatura/falhas e posta eventos
-    void tarefaControleNavegacao();       // controla velocidade/ângulo (modo auto/manual) + simulação 2D
-    void tarefaPlanejamentoRota();        // define setpoints em função da rota
-    void tarefaColetorDados();            // lê do buffer e loga (terminal + arquivo CSV)
+    // tarefas internas, cada uma roda em uma thread
 
-    // ---------- Identificação ----------
+    // aqui nao tem mais dinamica nem ruido, so le sensores brutos
+    // filtra e alimenta o buffer
+    void tarefaTratamentoSensores();
+
+    void tarefaLogicaComando();       // decide e_defeito, e_automatico e estado logico
+    void tarefaMonitoramentoFalhas(); // monitora temperatura e falhas e posta eventos
+    void tarefaControleNavegacao();   // controla atuadores em auto ou manual sem dinamica pesada
+    void tarefaPlanejamentoRota();    // define setpoints em funcao da rota
+    void tarefaColetorDados();        // le do buffer e registra no terminal e em arquivo csv
+
+    // simulacao fisica usada so por simulacaomina
+    //
+    // atualiza a dinamica fisica, posicao velocidade e temperatura a partir dos atuadores
+    // soma ruido de media nula e gera sensores brutos ja com falhas aplicadas
+    void simularPassoFisico(double dt, std::mt19937& rng);
+
+    // identificacao
     int id_;
 
-    // ---------- Infraestrutura interna ----------
+    // infraestrutura interna
     BufferCircular buffer_;
-    FilaEventos    filaEventos_;
+    FilaEventos filaEventos_;
 
-    // Comandos do operador
+    // comandos do operador
     mutable std::mutex mtxComandos_;
     ComandosCaminhao comandos_;
 
-    // Estado lógico global do caminhão (máquina de estados)
+    // estado logico global do caminhao, maquina de estados
     mutable std::mutex mtxEstadoLogico_;
     EstadoCaminhao estadoLogico_;
     double tempoNoEstado_s_; // tempo acumulado no estado atual
 
-    // Estados
+    // estados
     mutable std::mutex mtxEstados_;
     EstadosCaminhao estados_;
 
-    // Estado físico real
+    // estado fisico real
     mutable std::mutex mtxFisico_;
-    double fis_pos_x_;   // posição x em metros
-    double fis_pos_y_;   // posição y em metros
-    double fis_vel_;     // velocidade escalar em m/s
-    double fis_ang_deg_; // direção da frente, graus (0 = leste)
-    double fis_temp_C_;  // temperatura do motor
+    double fis_pos_x_;   // posicao x em metros
+    double fis_pos_y_;   // posicao y em metros
+    double fis_vel_;     // velocidade escalar em m por s
+    double fis_ang_deg_; // direcao da frente em graus, zero para leste
+    double fis_temp_C_;  // temperatura do motor em graus celsius
 
-    // Flags de falha física/simulada, usadas para forçar sensores
+    // sensores brutos gerados pela simulacaomina a partir da fisica com ruido
+    mutable std::mutex mtxSensoresBrutos_;
+    SensoresCaminhao sensoresBrutos_;
+
+    // flags de falha fisica ou simulada, usadas pra forcar sensores
     std::atomic<bool> fis_forcarFalhaTemp_;
     std::atomic<bool> fis_forcarFalhaElec_;
     std::atomic<bool> fis_forcarFalhaHid_;
 
-    // Atuadores atuais
+    // atuadores atuais
     mutable std::mutex mtxAtuadores_;
     AtuadoresCaminhao atuadores_;
 
-    // Setpoints (Planejamento de Rota)
+    // setpoints, planejamento de rota
     mutable std::mutex mtxSetpoints_;
     SetpointsCaminhao setpoints_;
 
-    // Rota atual (origem/destino) definida externamente (main / gestão da mina)
+    // rota atual, origem e destino definidos externamente pela gestao da mina ou main
     mutable std::mutex mtxRota_;
     bool rota_definida_;
-    int  rota_origem_x_;
-    int  rota_origem_y_;
-    int  rota_destino_x_;
-    int  rota_destino_y_;
+    int rota_origem_x_;
+    int rota_origem_y_;
+    int rota_destino_x_;
+    int rota_destino_y_;
 
-    // ---------- Log em arquivo ----------
-    std::ofstream       arquivoLog_;
-    mutable std::mutex  mtxLog_;
+    // log em arquivo
+    std::ofstream arquivoLog_;
+    mutable std::mutex mtxLog_;
 
-    // ---------- Controle de threads ----------
+    // controle de threads internas
     std::atomic<bool> rodando_;
     std::thread thTratamentoSensores_;
     std::thread thLogicaComando_;

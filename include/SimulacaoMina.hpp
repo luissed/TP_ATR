@@ -5,86 +5,64 @@
 #include <cstddef>
 #include "Caminhao.hpp"
 
-// Classe de alto nível que representa a simulação/gestão da mina.
-//
-// Ela é o BACKEND das tarefas:
-//
-// - Simulação da Mina:
-//     * cria caminhões novos;
-//     * inicia/para todas as tarefas internas dos caminhões;
-//     * permite injetar falhas em qualquer caminhão (para a interface de simulação).
-//
-// - Gestão da Mina:
-//     * fornece um "mapa" (por enquanto textual) da posição de todos os caminhões;
-//     * permite alterar o setpoint/rota de qualquer caminhão.
-//
-// Mais pra frente, uma interface gráfica (ou outra camada) vai chamar
-// EXCLUSIVAMENTE estes métodos públicos aqui para controlar o sistema.
+// classe que representa a simulacao e a gestao da mina
+// funciona como backend das tarefas de cima
+// cuida de criar caminhoes iniciar e parar as tarefas internas e injetar falhas
+// tambem oferece um mapa simples da posicao dos caminhoes e permite mudar rota e setpoint
+// a ideia eh que uma interface grafica futura use so estes metodos publicos para controlar tudo
 class SimulacaoMina {
 public:
-    // Construtor: opcionalmente já cria 'numCaminhoes' caminhões com
-    // buffer de tamanho 'capacidadeBufferPadrao'.
-    // Se numCaminhoes == 0, você pode criar caminhões depois com criarNovoCaminhao().
+    // construtor pode opcionalmente criar numCaminhoes logo no inicio
+    // usa um buffer com tamanho capacidadeBufferPadrao
+    // se numCaminhoes for zero os caminhoes podem ser criados depois com criarNovoCaminhao
     SimulacaoMina(int numCaminhoes = 0, std::size_t capacidadeBufferPadrao = 200);
 
     ~SimulacaoMina();
 
-    // -------------------------------------------------------------------------
-    // Controle global de execução (Simulação da Mina)
-    // -------------------------------------------------------------------------
+    // controle global de execucao da simulacao da mina
 
-    // Inicia todas as tarefas de todos os caminhões existentes.
+    // inicia as tarefas de todos os caminhoes que existem
     void iniciar();
 
-    // Pede para todos os caminhões pararem e dá join nas threads.
+    // pede para todos os caminhoes pararem e faz join nas threads
     void parar();
 
-    // -------------------------------------------------------------------------
-    // Simulação da Mina: criação de caminhões e injeção de falhas
-    // -------------------------------------------------------------------------
+    // parte da simulacao da mina que cria caminhoes e injeta falhas
 
-    // Cria um novo caminhão na mina.
-    //
-    // - capacidadeBuffer == 0 -> usa capacidadeBufferPadrao interna.
-    // - Retorna o ID lógico do caminhão (1,2,3,...), igual a Caminhao::getId().
-    //
-    // Se a simulação já estiver rodando (iniciar() já foi chamado),
-    // o caminhão novo já tem suas tarefas internas iniciadas automaticamente.
+    // cria um novo caminhao na mina
+    // se capacidadeBuffer for zero usa o valor padrao interno
+    // retorna um id logico do caminhao compativel com getId
+    // se a simulacao ja estiver rodando o novo caminhao entra com as tarefas internas ja iniciadas
     int criarNovoCaminhao(std::size_t capacidadeBuffer = 0);
 
-    // Acessa caminhão por ID lógico (1..N).
-    // Lança std::out_of_range se não encontrar.
+    // acessa caminhao pelo id logico de um ate n
+    // lanca std::out_of_range se nao encontrar
     Caminhao& getCaminhaoPorId(int id);
     const Caminhao& getCaminhaoPorId(int id) const;
 
-    // Métodos de conveniência para a INTERFACE DE SIMULAÇÃO:
-    // injetam falhas em um caminhão específico.
+    // metodos de atalho para a interface de simulacao
+    // servem para injetar falhas em um caminhao especifico
     void injetarFalhaTemperatura(int idCaminhao);
     void injetarFalhaEletrica(int idCaminhao);
     void injetarFalhaHidraulica(int idCaminhao);
 
-    // -------------------------------------------------------------------------
-    // Gestão da Mina: mapa e alteração de rotas
-    // -------------------------------------------------------------------------
+    // parte de gestao da mina ligada ao mapa e a alteracao de rotas
 
-    // Define uma rota (ponto inicial e final) para um caminhão específico.
-    // Esta é a "ordem" que a tarefa de Gestão da Mina envia para Planejamento de Rota.
+    // define uma rota com ponto inicial e final para um caminhao especifico
+    // funciona como a ordem que a gestao da mina envia para a tarefa de planejamento de rota
     void definirRotaCaminhao(int idCaminhao,
                              int x_inicial, int y_inicial,
                              int x_destino, int y_destino);
 
-    // Imprime, em texto, um "mapa" com um snapshot do último estado
-    // de todos os caminhões (para testes enquanto a GUI não existe).
+    // imprime em texto um mapa simples com um snapshot do ultimo estado de todos os caminhoes
+    // util para teste enquanto a interface grafica nao existe
     void imprimirMapaTexto() const;
 
-    // Loop de "mapa em tempo real" por 'segundos', chamando imprimirMapaTexto()
-    // a cada segundo. Isto é um stub da tarefa de Gestão da Mina.
+    // executa um loop de mapa em tempo quase real por um certo numero de segundos chamando imprimirMapaTexto
+    // funciona como um stub da tarefa de gestao da mina
     void rodarPorSegundos(int segundos);
 
-    // -------------------------------------------------------------------------
-    // Acesso bruto por índice (0..N-1) - útil para testes antigos/main atual
-    // -------------------------------------------------------------------------
-
+    // acesso direto por indice de zero ate n menos um util para testes antigos e para o main atual
     Caminhao& getCaminhao(std::size_t indice);
     const Caminhao& getCaminhao(std::size_t indice) const;
 

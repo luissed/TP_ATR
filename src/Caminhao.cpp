@@ -13,9 +13,7 @@ namespace {
     constexpr double PI = 3.14159265358979323846;
 }
 
-// -----------------------------------------------------------------------------
-// Construtor / destrutor / controle de threads
-// -----------------------------------------------------------------------------
+// construtor destrutor e controle de thread
 
 Caminhao::Caminhao(int id, std::size_t capacidadeBuffer)
     : id_(id),
@@ -98,9 +96,7 @@ bool Caminhao::lerUltimoRegistro(RegistroBuffer& out) const {
     return buffer_.tentarLerMaisRecente(out);
 }
 
-// -----------------------------------------------------------------------------
-// Comandos do operador + backend de comandos contínuos + injeção de falhas
-// -----------------------------------------------------------------------------
+// comandos do operador backend de comandos continuos e injecao de falhas
 
 void Caminhao::comandarAutomatico() {
     std::lock_guard<std::mutex> lock(mtxComandos_);
@@ -122,13 +118,13 @@ void Caminhao::comandarRearme() {
         comandos_.c_rearme = true;
     }
 
-    // Rearme zera imediatamente o defeito "latched"
+    // rearme zera na hora o defeito travado
     {
         std::lock_guard<std::mutex> lockEst(mtxEstados_);
         estados_.e_defeito = false;
     }
 
-    // Rearme também limpa as falhas "físicas" forçadas pela Simulação da Mina
+    // rearme tambem limpa flags de falha fisica que a simulacao da mina esta forcando
     fis_forcarFalhaTemp_ = false;
     fis_forcarFalhaElec_ = false;
     fis_forcarFalhaHid_  = false;
@@ -136,7 +132,7 @@ void Caminhao::comandarRearme() {
     std::cout << "[Caminhao " << id_ << "] Comando do operador: REARME.\n";
 }
 
-// Backend dos comandos contínuos (modo manual)
+// backend dos comandos continuos do modo manual
 void Caminhao::setComandoAcelerar(bool ativo) {
     std::lock_guard<std::mutex> lock(mtxComandos_);
     comandos_.c_acelera = ativo;
@@ -152,9 +148,7 @@ void Caminhao::setComandoEsquerda(bool ativo) {
     comandos_.c_esquerda = ativo;
 }
 
-// ---- Injeção de falhas via interface (para testes) --------------------------
-// Agora estas funções apenas marcam flags físicas/sensores. Quem gera os
-// eventos de falha é a tarefa de Monitoramento de Falhas.
+// injecao de falhas via interface para teste
 
 void Caminhao::injetarFalhaTemperaturaAlta() {
     fis_forcarFalhaTemp_ = true;
@@ -171,9 +165,7 @@ void Caminhao::injetarFalhaHidraulica() {
     std::cout << "[Caminhao " << id_ << "] [TESTE] FalhaHidraulica injetada (via sensores).\n";
 }
 
-// -----------------------------------------------------------------------------
-// Definir rota
-// -----------------------------------------------------------------------------
+// definicao de rota do caminhao
 
 void Caminhao::definirRota(int x_inicial, int y_inicial, int x_destino, int y_destino) {
     {
@@ -209,9 +201,7 @@ void Caminhao::definirRota(int x_inicial, int y_inicial, int x_destino, int y_de
               << x_destino << "," << y_destino << ")\n";
 }
 
-// -----------------------------------------------------------------------------
-// 1) Tratamento de Sensores
-// -----------------------------------------------------------------------------
+// tarefa de tratamento de sensores faz filtro gera snapshot e joga no buffer
 
 void Caminhao::tarefaTratamentoSensores() {
     using clock = std::chrono::steady_clock;
@@ -224,7 +214,7 @@ void Caminhao::tarefaTratamentoSensores() {
         clock::now().time_since_epoch().count() + id_));
     std::normal_distribution<double> noisePos(0.0, 0.2);   // metros
     std::normal_distribution<double> noiseAng(0.0, 1.0);   // graus
-    std::normal_distribution<double> noiseTemp(0.0, 0.5);  // °C
+    std::normal_distribution<double> noiseTemp(0.0, 0.5);  // C
 
     auto filtraMM = [&](std::deque<double>& hist, double novo) {
         hist.push_back(novo);
@@ -250,7 +240,7 @@ void Caminhao::tarefaTratamentoSensores() {
             temp = fis_temp_C_;
         }
 
-        // Flags de falha física/simulação (injetadas pela Simulação da Mina)
+        // flags de falha fisica geradas pela simulacao da mina
         bool falhaTempForcada = fis_forcarFalhaTemp_.load();
         bool falhaElecForcada = fis_forcarFalhaElec_.load();
         bool falhaHidForcada  = fis_forcarFalhaHid_.load();
@@ -271,13 +261,13 @@ void Caminhao::tarefaTratamentoSensores() {
         sensores.i_angulo_x    = static_cast<int>(std::lround(ang_f));
         sensores.i_temperatura = static_cast<int>(std::lround(temp_f));
 
-        // Sensores de falha: agora podem ser forçados pela "Simulação da Mina"
+        // sensores de falha podem ser forcados pela simulacao da mina
         sensores.i_falha_eletrica   = falhaElecForcada;
         sensores.i_falha_hidraulica = falhaHidForcada;
 
-        // Falha de temperatura alta é simulada forçando a leitura do sensor
+        // falha de temperatura alta e simulada forcando a leitura do sensor
         if (falhaTempForcada) {
-            sensores.i_temperatura = 130; // acima do limite de 120 °C
+            sensores.i_temperatura = 130; // acima do limite de 120 C
         }
 
         EstadosCaminhao estados;
@@ -328,9 +318,7 @@ void Caminhao::tarefaTratamentoSensores() {
     std::cout << "[Caminhao " << id_ << "] Tarefa TratamentoSensores encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 2) Lógica de Comando + consumo de eventos (FilaEventos)
-// -----------------------------------------------------------------------------
+// tarefa de logica de comando consome eventos e atualiza estados
 
 void Caminhao::tarefaLogicaComando() {
     double ultimoTempoBuffer = 0.0;
@@ -350,13 +338,19 @@ void Caminhao::tarefaLogicaComando() {
         ComandosCaminhao cmds = reg.comandos;
         EstadosCaminhao  ests = reg.estados;
 
-        EstadosCaminhao novosEstados = ests;
-        bool houveRearmeEvento = false;
+        // -----------------------------------------------------------------
+        // Falhas vistas diretamente nos SENSORES (independe da fila)
+        // -----------------------------------------------------------------
+        bool falhaSensorTemp = (reg.sensores.i_temperatura > 120);
+        bool falhaSensorElec = reg.sensores.i_falha_eletrica;
+        bool falhaSensorHid  = reg.sensores.i_falha_hidraulica;
+        bool falhaSensorQualquer = falhaSensorTemp || falhaSensorElec || falhaSensorHid;
 
-        // 1) REARME: tem prioridade absoluta sobre eventos de falha
+        EstadosCaminhao novosEstados = ests;
+
+        // 1) REARME: tem prioridade absoluta sobre falhas
         if (cmds.c_rearme) {
             novosEstados.e_defeito = false;
-            houveRearmeEvento = true;
 
             // Descarta todos os eventos pendentes (falhas antigas)
             Evento lixo{};
@@ -364,7 +358,12 @@ void Caminhao::tarefaLogicaComando() {
                 // apenas descarta
             }
         } else {
-            // 1b) Sem rearme: consome eventos da fila e ajusta e_defeito
+            // 1b) Sem rearme: primeiro sensores, depois eventos
+            if (falhaSensorQualquer) {
+                novosEstados.e_defeito = true;
+            }
+
+            // Ainda consumimos eventos para manter compatibilidade
             Evento ev{};
             while (filaEventos_.tentarRetirar(ev)) {
                 switch (ev.tipo) {
@@ -404,11 +403,9 @@ void Caminhao::tarefaLogicaComando() {
 
         // 4) Estado atual
         EstadoCaminhao estadoAtual;
-        double tempoNoEstado;
         {
             std::lock_guard<std::mutex> lock(mtxEstadoLogico_);
-            estadoAtual    = estadoLogico_;
-            tempoNoEstado  = tempoNoEstado_s_;
+            estadoAtual = estadoLogico_;
         }
 
         EstadoCaminhao novoEstado = estadoAtual;
@@ -441,9 +438,7 @@ void Caminhao::tarefaLogicaComando() {
                     break;
 
                 case EstadoCaminhao::EmFalha:
-                    // Sai de falha após rearme, volta parado (mas isso aqui
-                    // em tese não acontece porque e_defeito estaria false
-                    // e a lógica acima já teria tratado).
+                    // Sem defeito latched, mas ainda em auto/rota -> volta pra Parado
                     novoEstado = EstadoCaminhao::Parado;
                     break;
             }
@@ -452,7 +447,6 @@ void Caminhao::tarefaLogicaComando() {
         // 4c) MODO MANUAL OU AUTO SEM ROTA DEFINIDA
         // -----------------------------------------------------------------
         else {
-            // --- NOVO COMPORTAMENTO EM MODO MANUAL ---
             // Se NÃO está em automático, NÃO está em defeito,
             // e o atuador de aceleração é diferente de zero,
             // consideramos que o caminhão está EmMovimento.
@@ -470,10 +464,9 @@ void Caminhao::tarefaLogicaComando() {
                 }
             }
 
-            // Caso especial: estava EM FALHA, recebeu rearme, mas não está em auto/rota
+            // Garante coerência: se não há defeito latched, não podemos ficar EM FALHA
             if (!novosEstados.e_defeito &&
-                estadoAtual == EstadoCaminhao::EmFalha &&
-                houveRearmeEvento) {
+                estadoAtual == EstadoCaminhao::EmFalha) {
                 novoEstado = EstadoCaminhao::Parado;
             }
         }
@@ -503,9 +496,7 @@ void Caminhao::tarefaLogicaComando() {
     std::cout << "[Caminhao " << id_ << "] Tarefa LogicaComando encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 3) Monitoramento de Falhas (sensores -> eventos)
-// -----------------------------------------------------------------------------
+// tarefa de monitoramento de falhas transforma leituras de sensor em eventos
 
 void Caminhao::tarefaMonitoramentoFalhas() {
     bool falhaTempAtiva       = false;
@@ -523,7 +514,7 @@ void Caminhao::tarefaMonitoramentoFalhas() {
         bool sFalhaElec = reg.sensores.i_falha_eletrica;
         bool sFalhaHid  = reg.sensores.i_falha_hidraulica;
 
-        // Temperatura alta: T > 120 °C -> evento de falha de temperatura
+        // se temperatura passar de 120 gera evento de falha de temperatura
         if (temp > 120) {
             if (!falhaTempAtiva) {
                 Evento ev{};
@@ -568,9 +559,7 @@ void Caminhao::tarefaMonitoramentoFalhas() {
     std::cout << "[Caminhao " << id_ << "] Tarefa MonitoramentoFalhas encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 4) Controle de Navegação + Simulação 2D (AUTO + MANUAL)
-// -----------------------------------------------------------------------------
+// tarefa de controle de navegacao atualiza dinamica simples em duas dimensoes e decide atuadores
 
 void Caminhao::tarefaControleNavegacao() {
     auto anterior = std::chrono::steady_clock::now();
@@ -580,9 +569,9 @@ void Caminhao::tarefaControleNavegacao() {
     const double Kp_dist    = 1.0;
     const double DIST_PARAR = 1.0;
 
-    // Parâmetros simples de modo manual
-    const int MANUAL_ACEL_VAL  = 50; // %
-    const int MANUAL_DIR_PASSO = 10; // graus por "tick" segurando tecla
+    // parametros simples do modo manual
+    const int MANUAL_ACEL_VAL  = 50; // percentual de aceleracao no manual
+    const int MANUAL_DIR_PASSO = 10; // passo em graus quando tecla de direcao fica pressionada
 
     while (rodando_) {
         auto agora = std::chrono::steady_clock::now();
@@ -597,7 +586,7 @@ void Caminhao::tarefaControleNavegacao() {
             atu = atuadores_;
         }
 
-        // Dinâmica física básica
+        // dinamica fisica basica do modelo
         {
             std::lock_guard<std::mutex> lock(mtxFisico_);
             fis_ang_deg_ = static_cast<double>(atu.o_direcao);
@@ -622,7 +611,7 @@ void Caminhao::tarefaControleNavegacao() {
             fis_temp_C_    += 0.5 * (alvoTemp - fis_temp_C_) * dt;
         }
 
-        // Controle (auto ou manual)
+        // controle pode ser automatico ou manual
         RegistroBuffer reg{};
         if (buffer_.tentarLerMaisRecente(reg)) {
             EstadosCaminhao   ests = reg.estados;
@@ -634,42 +623,39 @@ void Caminhao::tarefaControleNavegacao() {
 
             bool temDefeitoOuFalha = ests.e_defeito || (reg.estado == EstadoCaminhao::EmFalha);
 
+            // trecho do modo automatico
             if (ests.e_automatico && !temDefeitoOuFalha) {
-                // ---------------- MODO AUTOMÁTICO ----------------
                 double dx   = static_cast<double>(sp.sp_posicao_x - s.i_posicao_x);
                 double dy   = static_cast<double>(sp.sp_posicao_y - s.i_posicao_y);
                 double dist = std::sqrt(dx*dx + dy*dy);
 
-                // Usa DIRETAMENTE o ângulo de referência calculado pelo Planejamento de Rota
                 double cmd_dir = static_cast<double>(sp.sp_angulo_x);
 
-                // Garante que o ângulo de comando fique em [-180, 180]
                 while (cmd_dir > 180.0)  cmd_dir -= 360.0;
                 while (cmd_dir < -180.0) cmd_dir += 360.0;
 
                 novosAtu.o_direcao = static_cast<int>(std::lround(cmd_dir));
 
-                // Aceleração proporcional à distância até o destino
                 double cmd_acel = Kp_dist * dist;
                 if (cmd_acel > 100.0) cmd_acel = 100.0;
                 if (cmd_acel < 0.0)   cmd_acel = 0.0;
 
-                // Se já chegou suficientemente perto, para
                 if (dist <= DIST_PARAR) {
                     cmd_acel = 0.0;
                 }
 
                 novosAtu.o_aceleracao = static_cast<int>(std::lround(cmd_acel));
             } else {
-                // ---------------- NÃO AUTOMÁTICO ----------------
+                // trecho que cobre modo manual e situacoes de falha
                 if (!ests.e_automatico && !temDefeitoOuFalha) {
-                    // -------- MODO MANUAL (sem defeito) --------
+                    // logica do modo manual quando nao ha defeito
                     int dir = novosAtu.o_direcao;
 
+                    // direita reduz angulo e esquerda aumenta angulo
                     if (cmds.c_direita && !cmds.c_esquerda) {
-                        dir += MANUAL_DIR_PASSO;
-                    } else if (cmds.c_esquerda && !cmds.c_direita) {
                         dir -= MANUAL_DIR_PASSO;
+                    } else if (cmds.c_esquerda && !cmds.c_direita) {
+                        dir += MANUAL_DIR_PASSO;
                     }
 
                     if (dir > 180) dir = 180;
@@ -677,10 +663,10 @@ void Caminhao::tarefaControleNavegacao() {
 
                     novosAtu.o_direcao = dir;
 
-                    // Aceleração manual simples: aperta = acelera, solta = 0
+                    // aciona ou nao a aceleracao
                     novosAtu.o_aceleracao = cmds.c_acelera ? MANUAL_ACEL_VAL : 0;
                 } else {
-                    // Defeito ou estado lógico de falha -> atuadores "desligados"
+                    // em defeito ou estado de falha os atuadores ficam desligados
                     novosAtu.o_aceleracao = 0;
                     novosAtu.o_direcao    = s.i_angulo_x;
                 }
@@ -698,11 +684,13 @@ void Caminhao::tarefaControleNavegacao() {
     std::cout << "[Caminhao " << id_ << "] Tarefa ControleNavegacao encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 5) Planejamento de Rota
-// -----------------------------------------------------------------------------
+// tarefa de planejamento de rota calcula setpoints a partir da rota
 
 void Caminhao::tarefaPlanejamentoRota() {
+    // dentro de uma certa distancia de tolerancia nao recalcula mais o angulo de referencia
+    // isso evita o pulo forte perto do destino
+    const double DIST_CONGELA_ANG = 2.0;
+
     while (rodando_) {
         RegistroBuffer reg{};
         if (!buffer_.tentarLerMaisRecente(reg)) {
@@ -729,13 +717,20 @@ void Caminhao::tarefaPlanejamentoRota() {
             sp.sp_posicao_x = dest_x;
             sp.sp_posicao_y = dest_y;
 
-            double dx = static_cast<double>(dest_x - reg.sensores.i_posicao_x);
-            double dy = static_cast<double>(dest_y - reg.sensores.i_posicao_y);
-            double ang_rad = std::atan2(dy, dx);
-            double ang_deg = ang_rad * 180.0 / PI;
-            sp.sp_angulo_x = static_cast<int>(std::lround(ang_deg));
+            double dx   = static_cast<double>(dest_x - reg.sensores.i_posicao_x);
+            double dy   = static_cast<double>(dest_y - reg.sensores.i_posicao_y);
+            double dist = std::sqrt(dx*dx + dy*dy);
+
+            if (dist > DIST_CONGELA_ANG) {
+                double ang_rad = std::atan2(dy, dx);
+                double ang_deg = ang_rad * 180.0 / PI;
+                sp.sp_angulo_x = static_cast<int>(std::lround(ang_deg));
+            } else {
+                // quando ja esta perto congela no angulo medido pelo sensor
+                sp.sp_angulo_x = reg.sensores.i_angulo_x;
+            }
         } else {
-            // Bumpless: em manual ou sem rota/defeito, setpoints = posição atual
+            // em manual ou sem rota ou com defeito joga setpoint igual a posicao atual pra ficar bumpless
             sp.sp_posicao_x = reg.sensores.i_posicao_x;
             sp.sp_posicao_y = reg.sensores.i_posicao_y;
             sp.sp_angulo_x  = reg.sensores.i_angulo_x;
@@ -752,9 +747,7 @@ void Caminhao::tarefaPlanejamentoRota() {
     std::cout << "[Caminhao " << id_ << "] Tarefa PlanejamentoRota encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 6) Coletor de Dados (inclui coluna "evento")
-// -----------------------------------------------------------------------------
+// tarefa de coletor de dados escreve log no terminal e no csv incluindo a coluna de evento
 
 void Caminhao::tarefaColetorDados() {
     bool defeitoAnterior = false;

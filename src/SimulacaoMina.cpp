@@ -32,9 +32,7 @@ SimulacaoMina::~SimulacaoMina() {
     parar();
 }
 
-// -----------------------------------------------------------------------------
-// Controle global de execução
-// -----------------------------------------------------------------------------
+// controle global da execucao da simulacao da mina
 
 void SimulacaoMina::iniciar() {
     if (rodando_) {
@@ -49,7 +47,7 @@ void SimulacaoMina::iniciar() {
 
 void SimulacaoMina::parar() {
     if (!rodando_ && caminhoes_.empty()) {
-        // Se nunca rodou e não há caminhões, nada a fazer.
+        // nunca rodou e nao ha caminhoes entao nao precisa fazer nada
         return;
     }
     std::cout << "[SimulacaoMina] Parando todos os caminhões...\n";
@@ -59,9 +57,7 @@ void SimulacaoMina::parar() {
     rodando_ = false;
 }
 
-// -----------------------------------------------------------------------------
-// Simulação da Mina: criação de caminhões e injeção de falhas
-// -----------------------------------------------------------------------------
+// simulacao da mina, criacao de caminhoes e injeção de falhas
 
 int SimulacaoMina::criarNovoCaminhao(std::size_t capacidadeBuffer) {
     if (capacidadeBuffer == 0) {
@@ -77,7 +73,7 @@ int SimulacaoMina::criarNovoCaminhao(std::size_t capacidadeBuffer) {
     std::cout << "[SimulacaoMina] Criado novo caminhão com id="
               << novoId << " (buffer=" << capacidadeBuffer << " entradas).\n";
 
-    // Se a simulação já estiver rodando, iniciamos as tarefas deste caminhão agora.
+    // se a simulacao ja estiver rodando iniciamos as tarefas deste caminhao aqui
     if (rodando_) {
         ptrCru->iniciar();
     }
@@ -120,9 +116,7 @@ void SimulacaoMina::injetarFalhaHidraulica(int idCaminhao) {
     c.injetarFalhaHidraulica();
 }
 
-// -----------------------------------------------------------------------------
-// Gestão da Mina: mapa e alteração de rotas
-// -----------------------------------------------------------------------------
+// gestao da mina, mapa simples e alteracao de rotas
 
 void SimulacaoMina::definirRotaCaminhao(int idCaminhao,
                                         int x_inicial, int y_inicial,
@@ -153,6 +147,8 @@ void SimulacaoMina::imprimirMapaTexto() const {
     }
 }
 
+// loop simples que imprime o mapa de tempos em tempos pra testar a simulacao
+
 void SimulacaoMina::rodarPorSegundos(int segundos) {
     for (int t = 0; t < segundos; ++t) {
         std::cout << "\n===== Tempo global = " << t << " s =====\n";
@@ -161,9 +157,7 @@ void SimulacaoMina::rodarPorSegundos(int segundos) {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Acesso bruto por índice
-// -----------------------------------------------------------------------------
+// acesso direto por indice de 0 ate n menos 1
 
 Caminhao& SimulacaoMina::getCaminhao(std::size_t indice) {
     return *caminhoes_.at(indice);

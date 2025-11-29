@@ -2,24 +2,25 @@
 
 #include <vector>
 #include <mutex>
-#include <cstddef>   // std::size_t
+#include <cstddef>   // tipo size_t da biblioteca padrao
 #include "Tipos.hpp"
 
-// Buffer circular monitorado para compartilhar dados dentro de UM caminhão.
-// Várias tarefas podem escrever e ler, mas o acesso é protegido por mutex.
+// buffer circular monitorado para compartilhar dados dentro de um caminhao
+// varias tarefas podem escrever e ler, acesso protegido por mutex
 class BufferCircular {
 public:
     explicit BufferCircular(std::size_t capacidade);
 
-    // Insere um novo registro no buffer.
-    // Se estiver cheio, sobrescreve o mais antigo (comportamento típico de buffer circular).
+    // insere um novo registro no buffer
+    // se estiver cheio, sobrescreve o mais antigo, comportamento tipico de buffer circular
     void inserir(const RegistroBuffer& registro);
 
-    // Tenta ler o registro mais recente.
-    // Retorna true se conseguiu, false se o buffer estiver vazio.
+    // tenta ler o registro mais recente
+    // retorna true quando consegue, retorna false quando o buffer esta vazio
     bool tentarLerMaisRecente(RegistroBuffer& out) const;
 
-    // Retorna uma cópia de todos os registros atualmente no buffer, em ordem do mais antigo para o mais recente.
+    // retorna uma copia de todos os registros atualmente no buffer
+    // em ordem do mais antigo para o mais recente
     std::vector<RegistroBuffer> snapshot() const;
 
     std::size_t tamanho() const;
@@ -29,6 +30,6 @@ private:
     mutable std::mutex mtx_;
     std::vector<RegistroBuffer> dados_;
     std::size_t capacidade_;
-    std::size_t inicio_;      // índice do elemento mais antigo
-    std::size_t quantidade_;  // quantidade de elementos válidos no buffer
+    std::size_t inicio_; // indice do elemento mais antigo
+    std::size_t quantidade_; // quantidade de elementos validos no buffer
 };
