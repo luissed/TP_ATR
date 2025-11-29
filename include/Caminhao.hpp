@@ -10,7 +10,7 @@
 #include "Tipos.hpp"
 #include "BufferCircular.hpp"
 #include "FilaEventos.hpp"
-
+#include "MqttInterface.hpp"
 // Classe que representa um caminhão da mina
 class Caminhao {
 public:
@@ -51,6 +51,8 @@ public:
     void definirRota(int x_inicial, int y_inicial, int x_destino, int y_destino);
 
 private:
+void processarMensagemMqtt(const std::string& topico, const std::string& payload);
+    std::unique_ptr<MqttInterface> mqtt_; // Ponteiro inteligente para a interface
     // ---------- Tarefas internas (cada uma roda em uma thread) ----------
     void tarefaTratamentoSensores();      // lê estado físico, filtra ruído e alimenta o buffer
     void tarefaLogicaComando();           // decide e_defeito, e_automatico e estado lógico

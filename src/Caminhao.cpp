@@ -6,6 +6,7 @@
 #include <cmath>
 #include <random>
 #include <deque>
+#include <cstdio> // Necessário para sscanf
 
 using namespace std::chrono_literals;
 
@@ -62,6 +63,27 @@ Caminhao::~Caminhao() {
 
 void Caminhao::iniciar() {
     if (rodando_) return;
+
+    // --- INICIO MQTT ---
+    // 1. Cria ID único para o cliente MQTT: "caminhao_1", "caminhao_2", etc.
+    std::string clientId = "caminhao_" + std::to_string(id_);
+
+    // 2. Cria a interface e define o callback (lambda) para processar mensagens recebidas
+    mqtt_ = std::make_unique<MqttInterface>(clientId, 
+        [this](const std::string& topico, const std::string& payload) {
+            this->processarMensagemMqtt(topico, payload);
+        }
+    );
+
+    // 3. Conecta ao broker
+    mqtt_->conectar();
+
+    // 4. Assina o tópico de comandos DESTE caminhão específico
+    // Ex: mina/caminhao/1/cmd
+    std::string topicoCmd = "mina/caminhao/" + std::to_string(id_) + "/cmd";
+    mqtt_->assinar(topicoCmd);
+    // --- FIM MQTT ---
+
     rodando_ = true;
 
     thTratamentoSensores_  = std::thread(&Caminhao::tarefaTratamentoSensores,  this);
@@ -71,7 +93,7 @@ void Caminhao::iniciar() {
     thPlanejamentoRota_    = std::thread(&Caminhao::tarefaPlanejamentoRota,    this);
     thColetorDados_        = std::thread(&Caminhao::tarefaColetorDados,        this);
 
-    std::cout << "[Caminhao " << id_ << "] Tarefas iniciadas.\n";
+    std::cout << "[Caminhao " << id_ << "] Tarefas iniciadas e MQTT conectado.\n";
 }
 
 void Caminhao::parar() {
@@ -83,6 +105,11 @@ void Caminhao::parar() {
     if (thControleNavegacao_.joinable())   thControleNavegacao_.join();
     if (thPlanejamentoRota_.joinable())    thPlanejamentoRota_.join();
     if (thColetorDados_.joinable())        thColetorDados_.join();
+    
+    // Desconecta MQTT ao parar
+    if (mqtt_) {
+        mqtt_->desconectar();
+    }
 }
 
 int Caminhao::getId() const {
@@ -441,9 +468,7 @@ void Caminhao::tarefaLogicaComando() {
                     break;
 
                 case EstadoCaminhao::EmFalha:
-                    // Sai de falha após rearme, volta parado (mas isso aqui
-                    // em tese não acontece porque e_defeito estaria false
-                    // e a lógica acima já teria tratado).
+                    // Sai de falha após rearme, volta parado
                     novoEstado = EstadoCaminhao::Parado;
                     break;
             }
@@ -452,10 +477,6 @@ void Caminhao::tarefaLogicaComando() {
         // 4c) MODO MANUAL OU AUTO SEM ROTA DEFINIDA
         // -----------------------------------------------------------------
         else {
-            // --- NOVO COMPORTAMENTO EM MODO MANUAL ---
-            // Se NÃO está em automático, NÃO está em defeito,
-            // e o atuador de aceleração é diferente de zero,
-            // consideramos que o caminhão está EmMovimento.
             if (!novosEstados.e_automatico && !novosEstados.e_defeito) {
                 if (reg.atuadores.o_aceleracao != 0) {
                     novoEstado = EstadoCaminhao::EmMovimento;
@@ -463,14 +484,11 @@ void Caminhao::tarefaLogicaComando() {
                     novoEstado = EstadoCaminhao::Parado;
                 }
             } else {
-                // Caso típico: automático sem rota definida.
-                // Se estava EmMovimento, forçamos para Parado.
                 if (estadoAtual == EstadoCaminhao::EmMovimento) {
                     novoEstado = EstadoCaminhao::Parado;
                 }
             }
 
-            // Caso especial: estava EM FALHA, recebeu rearme, mas não está em auto/rota
             if (!novosEstados.e_defeito &&
                 estadoAtual == EstadoCaminhao::EmFalha &&
                 houveRearmeEvento) {
@@ -523,7 +541,6 @@ void Caminhao::tarefaMonitoramentoFalhas() {
         bool sFalhaElec = reg.sensores.i_falha_eletrica;
         bool sFalhaHid  = reg.sensores.i_falha_hidraulica;
 
-        // Temperatura alta: T > 120 °C -> evento de falha de temperatura
         if (temp > 120) {
             if (!falhaTempAtiva) {
                 Evento ev{};
@@ -580,7 +597,6 @@ void Caminhao::tarefaControleNavegacao() {
     const double Kp_dist    = 1.0;
     const double DIST_PARAR = 1.0;
 
-    // Parâmetros simples de modo manual
     const int MANUAL_ACEL_VAL  = 50; // %
     const int MANUAL_DIR_PASSO = 10; // graus por "tick" segurando tecla
 
@@ -640,21 +656,17 @@ void Caminhao::tarefaControleNavegacao() {
                 double dy   = static_cast<double>(sp.sp_posicao_y - s.i_posicao_y);
                 double dist = std::sqrt(dx*dx + dy*dy);
 
-                // Usa DIRETAMENTE o ângulo de referência calculado pelo Planejamento de Rota
                 double cmd_dir = static_cast<double>(sp.sp_angulo_x);
 
-                // Garante que o ângulo de comando fique em [-180, 180]
                 while (cmd_dir > 180.0)  cmd_dir -= 360.0;
                 while (cmd_dir < -180.0) cmd_dir += 360.0;
 
                 novosAtu.o_direcao = static_cast<int>(std::lround(cmd_dir));
 
-                // Aceleração proporcional à distância até o destino
                 double cmd_acel = Kp_dist * dist;
                 if (cmd_acel > 100.0) cmd_acel = 100.0;
                 if (cmd_acel < 0.0)   cmd_acel = 0.0;
 
-                // Se já chegou suficientemente perto, para
                 if (dist <= DIST_PARAR) {
                     cmd_acel = 0.0;
                 }
@@ -676,11 +688,9 @@ void Caminhao::tarefaControleNavegacao() {
                     if (dir < -180) dir = -180;
 
                     novosAtu.o_direcao = dir;
-
-                    // Aceleração manual simples: aperta = acelera, solta = 0
                     novosAtu.o_aceleracao = cmds.c_acelera ? MANUAL_ACEL_VAL : 0;
                 } else {
-                    // Defeito ou estado lógico de falha -> atuadores "desligados"
+                    // Defeito
                     novosAtu.o_aceleracao = 0;
                     novosAtu.o_direcao    = s.i_angulo_x;
                 }
@@ -735,7 +745,6 @@ void Caminhao::tarefaPlanejamentoRota() {
             double ang_deg = ang_rad * 180.0 / PI;
             sp.sp_angulo_x = static_cast<int>(std::lround(ang_deg));
         } else {
-            // Bumpless: em manual ou sem rota/defeito, setpoints = posição atual
             sp.sp_posicao_x = reg.sensores.i_posicao_x;
             sp.sp_posicao_y = reg.sensores.i_posicao_y;
             sp.sp_angulo_x  = reg.sensores.i_angulo_x;
@@ -753,7 +762,7 @@ void Caminhao::tarefaPlanejamentoRota() {
 }
 
 // -----------------------------------------------------------------------------
-// 6) Coletor de Dados (inclui coluna "evento")
+// 6) Coletor de Dados (inclui MQTT e LOG)
 // -----------------------------------------------------------------------------
 
 void Caminhao::tarefaColetorDados() {
@@ -773,6 +782,7 @@ void Caminhao::tarefaColetorDados() {
             }
             defeitoAnterior = reg.estados.e_defeito;
 
+            // Saída no terminal (debug local)
             std::cout << "[Caminhao " << id_ << "] t=" << reg.tempoSimulacao_s
                       << "s | Estado=" << estadoToString(reg.estado)
                       << " | x=" << reg.sensores.i_posicao_x
@@ -787,6 +797,7 @@ void Caminhao::tarefaColetorDados() {
             }
             std::cout << "\n";
 
+            // Escrita em Arquivo (CSV)
             {
                 std::lock_guard<std::mutex> lock(mtxLog_);
                 if (arquivoLog_.is_open()) {
@@ -806,10 +817,56 @@ void Caminhao::tarefaColetorDados() {
                     arquivoLog_.flush();
                 }
             }
+
+            // Publicação MQTT (JSON)
+            if (mqtt_) {
+                std::string json = "{";
+                json += "\"id\": " + std::to_string(id_) + ",";
+                json += "\"x\": " + std::to_string(reg.sensores.i_posicao_x) + ",";
+                json += "\"y\": " + std::to_string(reg.sensores.i_posicao_y) + ",";
+                json += "\"ang\": " + std::to_string(reg.sensores.i_angulo_x) + ",";
+                json += "\"temp\": " + std::to_string(reg.sensores.i_temperatura) + ",";
+                json += "\"defeito\": " + std::string(reg.estados.e_defeito ? "true" : "false") + ",";
+                json += "\"auto\": " + std::string(reg.estados.e_automatico ? "true" : "false");
+                json += "}";
+
+                std::string topicoEstado = "mina/caminhao/" + std::to_string(id_) + "/estado";
+                mqtt_->publicar(topicoEstado, json);
+            }
         }
 
-        std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     std::cout << "[Caminhao " << id_ << "] Tarefa ColetorDados encerrada.\n";
+}
+
+// -----------------------------------------------------------------------------
+// Callback MQTT para receber comandos
+// -----------------------------------------------------------------------------
+
+void Caminhao::processarMensagemMqtt(const std::string& topico, const std::string& payload) {
+    std::cout << "[MQTT Recv " << id_ << "] " << payload << std::endl;
+
+    // Protocolo simples:
+    // Para rota: "ROTA:x_ini,y_ini,x_dest,y_dest"
+    // Para comandos: "CMD:AUTO", "CMD:MANUAL", "CMD:REARME"
+
+    if (payload.rfind("ROTA:", 0) == 0) {
+        int x1, y1, x2, y2;
+        // Pula os 5 caracteres de "ROTA:"
+        if (sscanf(payload.c_str() + 5, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4) {
+            std::cout << "[MQTT] Nova rota recebida via rede!\n";
+            this->definirRota(x1, y1, x2, y2);
+        }
+    }
+    else if (payload == "CMD:AUTO") {
+        this->comandarAutomatico();
+    }
+    else if (payload == "CMD:MANUAL") {
+        this->comandarManual();
+    }
+    else if (payload == "CMD:REARME") {
+        this->comandarRearme();
+    }
 }
