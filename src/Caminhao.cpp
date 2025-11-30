@@ -249,6 +249,9 @@ void Caminhao::tarefaTratamentoSensores() {
 void Caminhao::tarefaLogicaComando() {
     double ultimoTempoBuffer = 0.0;
     
+    // Variável estática ou local para persistir a necessidade de rearme na transição
+    bool bloqueio_seguranca_transicao = false; 
+
     while (rodando_) {
         RegistroBuffer reg{};
         if (!buffer_.tentarLerMaisRecente(reg)) {
@@ -261,16 +264,34 @@ void Caminhao::tarefaLogicaComando() {
         // 1. Atualizar Estados (Comandos de Borda)
         {
             std::lock_guard<std::mutex> l(mtxEstados_);
-            if (reg.comandos.c_man) estados_.e_automatico = false;
-            if (reg.comandos.c_automatico) estados_.e_automatico = true;
             
-            // Falhas
-            if (reg.sensores.i_falha_eletrica || reg.sensores.i_falha_hidraulica || reg.sensores.i_temperatura > 120) {
-                estados_.e_defeito = true;
+            // Se entrou em modo manual, ativamos o bloqueio de segurança
+            if (reg.comandos.c_man) {
+                estados_.e_automatico = false;
+                bloqueio_seguranca_transicao = true; // Trava a transição de volta para auto
             }
-            // Rearme
+            
+            // Se apertou rearme, liberamos o bloqueio (e limpa falhas)
             if (reg.comandos.c_rearme) {
                 estados_.e_defeito = false;
+                bloqueio_seguranca_transicao = false; // Destrava
+            }
+
+            // Se pediu automático, só aceita se NÃO estiver bloqueado (ou seja, se já rearmou)
+            if (reg.comandos.c_automatico) {
+                if (bloqueio_seguranca_transicao) {
+                    // Operador pediu Auto, mas ainda não rearmou após sair do manual.
+                    // Mantém em manual por segurança.
+                    estados_.e_automatico = false;
+                } else {
+                    // Seguro para entrar em auto
+                    estados_.e_automatico = true;
+                }
+            }
+            
+            // Falhas (prioridade máxima sobre os estados)
+            if (reg.sensores.i_falha_eletrica || reg.sensores.i_falha_hidraulica || reg.sensores.i_temperatura > 120) {
+                estados_.e_defeito = true;
             }
         }
 
@@ -402,8 +423,6 @@ void Caminhao::tarefaControleNavegacao() {
                 
                 // --- CORREÇÃO CRÍTICA: TRAVAGEM IMEDIATA ---
                 // Se houver defeito, forçamos a velocidade física a zero.
-                // Isso evita que o camião continue a andar por inércia e
-                // permite que a temperatura baixe.
                 {
                     std::lock_guard<std::mutex> lf(mtxFisico_);
                     fis_vel_ = 0.0; 
