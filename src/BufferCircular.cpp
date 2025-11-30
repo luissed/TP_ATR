@@ -10,17 +10,17 @@ void BufferCircular::inserir(const RegistroBuffer& registro) {
     std::lock_guard<std::mutex> lock(mtx_);
 
     if (capacidade_ == 0) {
-        return; // nada a fazer
+        return; // capacidade zero entao nao faz nada
     }
 
-    // posição onde vamos escrever: (inicio_ + quantidade_) % capacidade_
+    // indice onde vamos escrever eh inicio mais quantidade modulo capacidade
     std::size_t idxEscrita = (inicio_ + quantidade_) % capacidade_;
     dados_[idxEscrita] = registro;
 
     if (quantidade_ < capacidade_) {
         ++quantidade_;
     } else {
-        // buffer cheio: avançamos o "início" para descartar o mais antigo
+        // se o buffer estiver cheio avancamos o indice inicio e jogamos fora o registro mais antigo
         inicio_ = (inicio_ + 1) % capacidade_;
     }
 }
@@ -32,7 +32,7 @@ bool BufferCircular::tentarLerMaisRecente(RegistroBuffer& out) const {
         return false;
     }
 
-    // índice do mais recente: (inicio_ + quantidade_ - 1) % capacidade_
+    // indice do registro mais recente eh inicio mais quantidade menos um modulo capacidade
     std::size_t idxMaisRecente = (inicio_ + quantidade_ - 1) % capacidade_;
     out = dados_[idxMaisRecente];
     return true;

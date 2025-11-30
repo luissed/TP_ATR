@@ -168,67 +168,7 @@ CMakeFiles/gui_gestao.dir/src/Caminhao.cpp.o: \
  /usr/include/c++/13/bits/istream.tcc /usr/include/c++/13/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
- /usr/include/c++/13/bits/fstream.tcc \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Tipos.hpp \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/BufferCircular.hpp \
- /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_uninitialized.h \
- /usr/include/c++/13/bits/stl_vector.h \
- /usr/include/c++/13/bits/stl_bvector.h \
- /usr/include/c++/13/bits/vector.tcc \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/FilaEventos.hpp \
- /usr/include/c++/13/queue /usr/include/c++/13/deque \
- /usr/include/c++/13/bits/stl_deque.h /usr/include/c++/13/bits/deque.tcc \
- /usr/include/c++/13/bits/stl_heap.h /usr/include/c++/13/bits/stl_queue.h \
- /usr/include/c++/13/condition_variable \
- /usr/include/c++/13/bits/shared_ptr.h \
- /usr/include/c++/13/bits/shared_ptr_base.h \
- /usr/include/c++/13/bits/allocated_ptr.h \
- /usr/include/c++/13/ext/aligned_buffer.h \
- /usr/include/c++/13/ext/concurrence.h \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/MqttInterface.hpp \
- /usr/include/mqtt/async_client.h /usr/include/MQTTAsync.h \
- /usr/include/MQTTExportDeclarations.h /usr/include/MQTTProperties.h \
- /usr/include/MQTTReasonCodes.h /usr/include/MQTTSubscribeOpts.h \
- /usr/include/MQTTClientPersistence.h /usr/include/mqtt/types.h \
- /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
- /usr/include/c++/13/bits/stl_raw_storage_iter.h \
- /usr/include/c++/13/bits/align.h \
- /usr/include/c++/13/bits/shared_ptr_atomic.h \
- /usr/include/c++/13/backward/auto_ptr.h \
- /usr/include/c++/13/pstl/glue_memory_defs.h \
- /usr/include/c++/13/pstl/execution_defs.h /usr/include/c++/13/chrono \
- /usr/include/mqtt/token.h /usr/include/mqtt/iaction_listener.h \
- /usr/include/mqtt/exception.h /usr/include/c++/13/iostream \
- /usr/include/mqtt/properties.h /usr/include/MQTTProperties.h \
- /usr/include/mqtt/buffer_ref.h /usr/include/c++/13/cstring \
- /usr/include/string.h /usr/include/strings.h \
- /usr/include/mqtt/string_collection.h /usr/include/c++/13/map \
- /usr/include/c++/13/bits/stl_tree.h \
- /usr/include/c++/13/bits/node_handle.h \
- /usr/include/c++/13/bits/stl_map.h \
- /usr/include/c++/13/bits/stl_multimap.h \
- /usr/include/c++/13/bits/erase_if.h /usr/include/mqtt/server_response.h \
- /usr/include/mqtt/create_options.h /usr/include/mqtt/delivery_token.h \
- /usr/include/mqtt/message.h /usr/include/mqtt/iclient_persistence.h \
- /usr/include/mqtt/buffer_view.h /usr/include/mqtt/callback.h \
- /usr/include/mqtt/thread_queue.h /usr/include/c++/13/algorithm \
- /usr/include/c++/13/bits/stl_algo.h \
- /usr/include/c++/13/bits/algorithmfwd.h \
- /usr/include/c++/13/bits/uniform_int_dist.h \
- /usr/include/c++/13/pstl/glue_algorithm_defs.h \
- /usr/include/mqtt/iasync_client.h /usr/include/mqtt/connect_options.h \
- /usr/include/mqtt/topic.h /usr/include/mqtt/subscribe_options.h \
- /usr/include/MQTTSubscribeOpts.h /usr/include/mqtt/will_options.h \
- /usr/include/mqtt/ssl_options.h /usr/include/c++/13/functional \
- /usr/include/c++/13/bits/std_function.h \
- /usr/include/c++/13/unordered_map \
- /usr/include/c++/13/bits/unordered_map.h \
- /usr/include/c++/13/bits/hashtable.h \
- /usr/include/c++/13/bits/hashtable_policy.h \
- /usr/include/c++/13/bits/enable_special_members.h \
- /usr/include/c++/13/array /usr/include/c++/13/compare \
- /usr/include/mqtt/disconnect_options.h /usr/include/c++/13/list \
- /usr/include/c++/13/bits/stl_list.h /usr/include/c++/13/bits/list.tcc \
+ /usr/include/c++/13/bits/fstream.tcc /usr/include/c++/13/random \
  /usr/include/c++/13/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
@@ -250,9 +190,68 @@ CMakeFiles/gui_gestao.dir/src/Caminhao.cpp.o: \
  /usr/include/c++/13/tr1/modified_bessel_func.tcc \
  /usr/include/c++/13/tr1/poly_hermite.tcc \
  /usr/include/c++/13/tr1/poly_laguerre.tcc \
- /usr/include/c++/13/tr1/riemann_zeta.tcc /usr/include/c++/13/random \
- /usr/include/c++/13/bits/random.h \
+ /usr/include/c++/13/tr1/riemann_zeta.tcc \
+ /usr/include/c++/13/bits/random.h /usr/include/c++/13/vector \
+ /usr/include/c++/13/bits/stl_uninitialized.h \
+ /usr/include/c++/13/bits/stl_vector.h \
+ /usr/include/c++/13/bits/stl_bvector.h \
+ /usr/include/c++/13/bits/vector.tcc \
+ /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/opt_random.h \
  /usr/include/c++/13/bits/random.tcc /usr/include/c++/13/numeric \
  /usr/include/c++/13/bits/stl_numeric.h \
- /usr/include/c++/13/pstl/glue_numeric_defs.h
+ /usr/include/c++/13/pstl/glue_numeric_defs.h \
+ /usr/include/c++/13/pstl/execution_defs.h /usr/include/c++/13/memory \
+ /usr/include/c++/13/bits/stl_tempbuf.h \
+ /usr/include/c++/13/bits/stl_raw_storage_iter.h \
+ /usr/include/c++/13/bits/align.h /usr/include/c++/13/bits/shared_ptr.h \
+ /usr/include/c++/13/bits/shared_ptr_base.h \
+ /usr/include/c++/13/bits/allocated_ptr.h \
+ /usr/include/c++/13/ext/aligned_buffer.h \
+ /usr/include/c++/13/ext/concurrence.h \
+ /usr/include/c++/13/bits/shared_ptr_atomic.h \
+ /usr/include/c++/13/backward/auto_ptr.h \
+ /usr/include/c++/13/pstl/glue_memory_defs.h \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Tipos.hpp \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/BufferCircular.hpp \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/FilaEventos.hpp \
+ /usr/include/c++/13/queue /usr/include/c++/13/deque \
+ /usr/include/c++/13/bits/stl_deque.h /usr/include/c++/13/bits/deque.tcc \
+ /usr/include/c++/13/bits/stl_heap.h /usr/include/c++/13/bits/stl_queue.h \
+ /usr/include/c++/13/condition_variable \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/MqttInterface.hpp \
+ /usr/include/mqtt/async_client.h /usr/include/MQTTAsync.h \
+ /usr/include/MQTTExportDeclarations.h /usr/include/MQTTProperties.h \
+ /usr/include/MQTTReasonCodes.h /usr/include/MQTTSubscribeOpts.h \
+ /usr/include/MQTTClientPersistence.h /usr/include/mqtt/types.h \
+ /usr/include/c++/13/chrono /usr/include/mqtt/token.h \
+ /usr/include/mqtt/iaction_listener.h /usr/include/mqtt/exception.h \
+ /usr/include/c++/13/iostream /usr/include/mqtt/properties.h \
+ /usr/include/MQTTProperties.h /usr/include/mqtt/buffer_ref.h \
+ /usr/include/c++/13/cstring /usr/include/string.h /usr/include/strings.h \
+ /usr/include/mqtt/string_collection.h /usr/include/c++/13/map \
+ /usr/include/c++/13/bits/stl_tree.h \
+ /usr/include/c++/13/bits/node_handle.h \
+ /usr/include/c++/13/bits/stl_map.h \
+ /usr/include/c++/13/bits/stl_multimap.h \
+ /usr/include/c++/13/bits/erase_if.h /usr/include/mqtt/server_response.h \
+ /usr/include/mqtt/create_options.h /usr/include/mqtt/delivery_token.h \
+ /usr/include/mqtt/message.h /usr/include/mqtt/iclient_persistence.h \
+ /usr/include/mqtt/buffer_view.h /usr/include/mqtt/callback.h \
+ /usr/include/mqtt/thread_queue.h /usr/include/c++/13/algorithm \
+ /usr/include/c++/13/bits/stl_algo.h \
+ /usr/include/c++/13/bits/algorithmfwd.h \
+ /usr/include/c++/13/pstl/glue_algorithm_defs.h \
+ /usr/include/mqtt/iasync_client.h /usr/include/mqtt/connect_options.h \
+ /usr/include/mqtt/topic.h /usr/include/mqtt/subscribe_options.h \
+ /usr/include/MQTTSubscribeOpts.h /usr/include/mqtt/will_options.h \
+ /usr/include/mqtt/ssl_options.h /usr/include/c++/13/functional \
+ /usr/include/c++/13/bits/std_function.h \
+ /usr/include/c++/13/unordered_map \
+ /usr/include/c++/13/bits/unordered_map.h \
+ /usr/include/c++/13/bits/hashtable.h \
+ /usr/include/c++/13/bits/hashtable_policy.h \
+ /usr/include/c++/13/bits/enable_special_members.h \
+ /usr/include/c++/13/array /usr/include/c++/13/compare \
+ /usr/include/mqtt/disconnect_options.h /usr/include/c++/13/list \
+ /usr/include/c++/13/bits/stl_list.h /usr/include/c++/13/bits/list.tcc

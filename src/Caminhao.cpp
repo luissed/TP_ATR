@@ -7,6 +7,7 @@
 #include <random>
 #include <deque>
 #include <cstdio> // Necessário para sscanf
+#include <mutex>  // Necessário para std::lock_guard
 
 using namespace std::chrono_literals;
 
@@ -15,7 +16,7 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
-// Construtor / destrutor / controle de threads
+// Construtor / Destrutor / Controle de Threads
 // -----------------------------------------------------------------------------
 
 Caminhao::Caminhao(int id, std::size_t capacidadeBuffer)
@@ -34,6 +35,7 @@ Caminhao::Caminhao(int id, std::size_t capacidadeBuffer)
       fis_forcarFalhaTemp_(false),
       fis_forcarFalhaElec_(false),
       fis_forcarFalhaHid_(false),
+      em_reducao_seguranca_(false), // Inicia sem redução
       atuadores_{0, 0},
       setpoints_{0, 0, 0},
       rota_definida_(false),
@@ -45,15 +47,14 @@ Caminhao::Caminhao(int id, std::size_t capacidadeBuffer)
 {
     std::string nomeArquivo = "caminhao_" + std::to_string(id_) + ".csv";
     arquivoLog_.open(nomeArquivo, std::ios::out);
+    
+    // Cabeçalho do CSV
     if (arquivoLog_.is_open()) {
         arquivoLog_ << "tempo_s;id_caminhao;estado;e_defeito;e_automatico;"
                     << "i_posicao_x;i_posicao_y;i_angulo_x;i_temperatura;"
                     << "o_aceleracao;o_direcao;evento\n";
         arquivoLog_.flush();
         std::cout << "[Caminhao " << id_ << "] Log em arquivo: " << nomeArquivo << "\n";
-    } else {
-        std::cerr << "[Caminhao " << id_ << "] ERRO ao abrir arquivo de log: "
-                  << nomeArquivo << "\n";
     }
 }
 
@@ -64,28 +65,20 @@ Caminhao::~Caminhao() {
 void Caminhao::iniciar() {
     if (rodando_) return;
 
-    // --- INICIO MQTT ---
-    // 1. Cria ID único para o cliente MQTT: "caminhao_1", "caminhao_2", etc.
+    // --- 1. INICIO MQTT ---
     std::string clientId = "caminhao_" + std::to_string(id_);
-
-    // 2. Cria a interface e define o callback (lambda) para processar mensagens recebidas
     mqtt_ = std::make_unique<MqttInterface>(clientId, 
         [this](const std::string& topico, const std::string& payload) {
             this->processarMensagemMqtt(topico, payload);
         }
     );
 
-    // 3. Conecta ao broker
     mqtt_->conectar();
-
-    // 4. Assina o tópico de comandos DESTE caminhão específico
-    // Ex: mina/caminhao/1/cmd
-    std::string topicoCmd = "mina/caminhao/" + std::to_string(id_) + "/cmd";
-    mqtt_->assinar(topicoCmd);
-    // --- FIM MQTT ---
+    mqtt_->assinar("mina/caminhao/" + std::to_string(id_) + "/cmd");
 
     rodando_ = true;
 
+    // --- 2. Inicia Threads ---
     thTratamentoSensores_  = std::thread(&Caminhao::tarefaTratamentoSensores,  this);
     thLogicaComando_       = std::thread(&Caminhao::tarefaLogicaComando,       this);
     thMonitoramentoFalhas_ = std::thread(&Caminhao::tarefaMonitoramentoFalhas, this);
@@ -106,15 +99,10 @@ void Caminhao::parar() {
     if (thPlanejamentoRota_.joinable())    thPlanejamentoRota_.join();
     if (thColetorDados_.joinable())        thColetorDados_.join();
     
-    // Desconecta MQTT ao parar
-    if (mqtt_) {
-        mqtt_->desconectar();
-    }
+    if (mqtt_) mqtt_->desconectar();
 }
 
-int Caminhao::getId() const {
-    return id_;
-}
+int Caminhao::getId() const { return id_; }
 
 EstadoCaminhao Caminhao::lerEstadoLogico() const {
     std::lock_guard<std::mutex> lock(mtxEstadoLogico_);
@@ -126,8 +114,12 @@ bool Caminhao::lerUltimoRegistro(RegistroBuffer& out) const {
 }
 
 // -----------------------------------------------------------------------------
-// Comandos do operador + backend de comandos contínuos + injeção de falhas
+// Comandos e Segurança
 // -----------------------------------------------------------------------------
+
+void Caminhao::setReducaoSeguranca(bool ativar) {
+    em_reducao_seguranca_ = ativar;
+}
 
 void Caminhao::comandarAutomatico() {
     std::lock_guard<std::mutex> lock(mtxComandos_);
@@ -144,729 +136,418 @@ void Caminhao::comandarManual() {
 }
 
 void Caminhao::comandarRearme() {
-    {
-        std::lock_guard<std::mutex> lockCmd(mtxComandos_);
-        comandos_.c_rearme = true;
-    }
-
-    // Rearme zera imediatamente o defeito "latched"
-    {
-        std::lock_guard<std::mutex> lockEst(mtxEstados_);
-        estados_.e_defeito = false;
-    }
-
-    // Rearme também limpa as falhas "físicas" forçadas pela Simulação da Mina
+    { std::lock_guard<std::mutex> l(mtxComandos_); comandos_.c_rearme = true; }
+    { std::lock_guard<std::mutex> l(mtxEstados_); estados_.e_defeito = false; }
     fis_forcarFalhaTemp_ = false;
     fis_forcarFalhaElec_ = false;
     fis_forcarFalhaHid_  = false;
-
     std::cout << "[Caminhao " << id_ << "] Comando do operador: REARME.\n";
 }
 
-// Backend dos comandos contínuos (modo manual)
-void Caminhao::setComandoAcelerar(bool ativo) {
+void Caminhao::comandarParadaEmergencia() {
     std::lock_guard<std::mutex> lock(mtxComandos_);
-    comandos_.c_acelera = ativo;
+    
+    // Passa para Manual
+    comandos_.c_man = true;
+    comandos_.c_automatico = false;
+    
+    // Zera qualquer intenção de movimento anterior
+    comandos_.c_acelera = false;
+    comandos_.c_direita = false;
+    comandos_.c_esquerda = false;
+
+    // Mensagem de ALERTA clara na tela
+    std::cerr << "[Caminhao " << id_ << "] !!! PARADA DE EMERGENCIA (ANTI-COLISAO) !!!\n";
 }
 
-void Caminhao::setComandoDireita(bool ativo) {
-    std::lock_guard<std::mutex> lock(mtxComandos_);
-    comandos_.c_direita = ativo;
-}
+void Caminhao::setComandoAcelerar(bool ativo) { std::lock_guard<std::mutex> l(mtxComandos_); comandos_.c_acelera = ativo; }
+void Caminhao::setComandoDireita(bool ativo) { std::lock_guard<std::mutex> l(mtxComandos_); comandos_.c_direita = ativo; }
+void Caminhao::setComandoEsquerda(bool ativo) { std::lock_guard<std::mutex> l(mtxComandos_); comandos_.c_esquerda = ativo; }
 
-void Caminhao::setComandoEsquerda(bool ativo) {
-    std::lock_guard<std::mutex> lock(mtxComandos_);
-    comandos_.c_esquerda = ativo;
-}
+void Caminhao::injetarFalhaTemperaturaAlta() { fis_forcarFalhaTemp_ = true; std::cout << "[Caminhao " << id_ << "] [TESTE] Falha Temperatura.\n"; }
+void Caminhao::injetarFalhaEletrica() { fis_forcarFalhaElec_ = true; std::cout << "[Caminhao " << id_ << "] [TESTE] Falha Eletrica.\n"; }
+void Caminhao::injetarFalhaHidraulica() { fis_forcarFalhaHid_ = true; std::cout << "[Caminhao " << id_ << "] [TESTE] Falha Hidraulica.\n"; }
 
-// ---- Injeção de falhas via interface (para testes) --------------------------
-// Agora estas funções apenas marcam flags físicas/sensores. Quem gera os
-// eventos de falha é a tarefa de Monitoramento de Falhas.
-
-void Caminhao::injetarFalhaTemperaturaAlta() {
-    fis_forcarFalhaTemp_ = true;
-    std::cout << "[Caminhao " << id_ << "] [TESTE] FalhaTemperaturaAlta injetada (via sensores).\n";
-}
-
-void Caminhao::injetarFalhaEletrica() {
-    fis_forcarFalhaElec_ = true;
-    std::cout << "[Caminhao " << id_ << "] [TESTE] FalhaEletrica injetada (via sensores).\n";
-}
-
-void Caminhao::injetarFalhaHidraulica() {
-    fis_forcarFalhaHid_ = true;
-    std::cout << "[Caminhao " << id_ << "] [TESTE] FalhaHidraulica injetada (via sensores).\n";
+void Caminhao::definirRota(int x1, int y1, int x2, int y2) {
+    {
+        std::lock_guard<std::mutex> lf(mtxFisico_);
+        // Teleporta para inicio (para facilitar testes e evitar colisão no spawn)
+        fis_pos_x_ = (double)x1; fis_pos_y_ = (double)y1; fis_vel_ = 0;
+        
+        // Calcula ângulo inicial apontando para o destino
+        double dx = (double)(x2 - x1);
+        double dy = (double)(y2 - y1);
+        if (dx != 0 || dy != 0) {
+            fis_ang_deg_ = atan2(dy, dx) * 180.0/PI;
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lr(mtxRota_);
+        rota_origem_x_ = x1; rota_origem_y_ = y1;
+        rota_destino_x_ = x2; rota_destino_y_ = y2;
+        rota_definida_ = true;
+    }
+    
+    // Reseta estado para Parado ao definir nova rota
+    {
+        std::lock_guard<std::mutex> le(mtxEstadoLogico_);
+        estadoLogico_ = EstadoCaminhao::Parado;
+    }
+    
+    std::cout << "[Caminhao " << id_ << "] Rota definida (" << x1 << "," << y1 << ") -> (" << x2 << "," << y2 << ")\n";
 }
 
 // -----------------------------------------------------------------------------
-// Definir rota
-// -----------------------------------------------------------------------------
-
-void Caminhao::definirRota(int x_inicial, int y_inicial, int x_destino, int y_destino) {
-    {
-        std::lock_guard<std::mutex> lockFis(mtxFisico_);
-        fis_pos_x_ = static_cast<double>(x_inicial);
-        fis_pos_y_ = static_cast<double>(y_inicial);
-        fis_vel_   = 0.0;
-
-        double dx = static_cast<double>(x_destino - x_inicial);
-        double dy = static_cast<double>(y_destino - y_inicial);
-        double ang_rad = std::atan2(dy, dx);
-        fis_ang_deg_ = ang_rad * 180.0 / PI;
-        fis_temp_C_  = 40.0;
-    }
-
-    {
-        std::lock_guard<std::mutex> lockRota(mtxRota_);
-        rota_origem_x_  = x_inicial;
-        rota_origem_y_  = y_inicial;
-        rota_destino_x_ = x_destino;
-        rota_destino_y_ = y_destino;
-        rota_definida_  = true;
-    }
-
-    {
-        std::lock_guard<std::mutex> lockEst(mtxEstadoLogico_);
-        estadoLogico_    = EstadoCaminhao::Parado;
-        tempoNoEstado_s_ = 0.0;
-    }
-
-    std::cout << "[Caminhao " << id_ << "] Rota definida: origem=("
-              << x_inicial << "," << y_inicial << ") destino=("
-              << x_destino << "," << y_destino << ")\n";
-}
-
-// -----------------------------------------------------------------------------
-// 1) Tratamento de Sensores
+// Tarefas
 // -----------------------------------------------------------------------------
 
 void Caminhao::tarefaTratamentoSensores() {
-    using clock = std::chrono::steady_clock;
-    auto inicio = clock::now();
-
+    auto inicio = std::chrono::steady_clock::now();
     const int M = 10;
     std::deque<double> hist_x, hist_y, hist_ang, hist_temp;
+    std::mt19937 rng(id_ + std::chrono::system_clock::now().time_since_epoch().count());
+    std::normal_distribution<double> noise(0.0, 0.2);
 
-    std::mt19937 rng(static_cast<unsigned>(
-        clock::now().time_since_epoch().count() + id_));
-    std::normal_distribution<double> noisePos(0.0, 0.2);   // metros
-    std::normal_distribution<double> noiseAng(0.0, 1.0);   // graus
-    std::normal_distribution<double> noiseTemp(0.0, 0.5);  // °C
-
-    auto filtraMM = [&](std::deque<double>& hist, double novo) {
-        hist.push_back(novo);
-        if (static_cast<int>(hist.size()) > M) {
-            hist.pop_front();
-        }
-        double soma = 0.0;
-        for (double v : hist) soma += v;
-        return soma / static_cast<double>(hist.size());
+    auto filtra = [&](std::deque<double>& h, double v) {
+        h.push_back(v); if(h.size()>M) h.pop_front();
+        double s=0; for(auto x:h) s+=x; return s/h.size();
     };
 
     while (rodando_) {
-        auto agora = clock::now();
-        std::chrono::duration<double> diff = agora - inicio;
-        double tempoSim = diff.count();
+        double px, py, ang, temp;
+        { std::lock_guard<std::mutex> l(mtxFisico_); px=fis_pos_x_; py=fis_pos_y_; ang=fis_ang_deg_; temp=fis_temp_C_; }
 
-        double posx, posy, ang, temp;
-        {
-            std::lock_guard<std::mutex> lock(mtxFisico_);
-            posx = fis_pos_x_;
-            posy = fis_pos_y_;
-            ang  = fis_ang_deg_;
-            temp = fis_temp_C_;
-        }
+        // Aplica ruído e filtra
+        px = filtra(hist_x, px + noise(rng));
+        py = filtra(hist_y, py + noise(rng));
+        ang = filtra(hist_ang, ang);
+        temp = filtra(hist_temp, temp);
 
-        // Flags de falha física/simulação (injetadas pela Simulação da Mina)
-        bool falhaTempForcada = fis_forcarFalhaTemp_.load();
-        bool falhaElecForcada = fis_forcarFalhaElec_.load();
-        bool falhaHidForcada  = fis_forcarFalhaHid_.load();
+        SensoresCaminhao s;
+        s.i_posicao_x = (int)std::lround(px); s.i_posicao_y = (int)std::lround(py);
+        s.i_angulo_x = (int)std::lround(ang); s.i_temperatura = (int)std::lround(temp);
+        
+        if(fis_forcarFalhaTemp_) s.i_temperatura = 130;
+        s.i_falha_eletrica = fis_forcarFalhaElec_;
+        s.i_falha_hidraulica = fis_forcarFalhaHid_;
 
-        double posx_ruido = posx + noisePos(rng);
-        double posy_ruido = posy + noisePos(rng);
-        double ang_ruido  = ang  + noiseAng(rng);
-        double temp_ruido = temp + noiseTemp(rng);
-
-        double posx_f = filtraMM(hist_x, posx_ruido);
-        double posy_f = filtraMM(hist_y, posy_ruido);
-        double ang_f  = filtraMM(hist_ang, ang_ruido);
-        double temp_f = filtraMM(hist_temp, temp_ruido);
-
-        SensoresCaminhao sensores{};
-        sensores.i_posicao_x   = static_cast<int>(std::lround(posx_f));
-        sensores.i_posicao_y   = static_cast<int>(std::lround(posy_f));
-        sensores.i_angulo_x    = static_cast<int>(std::lround(ang_f));
-        sensores.i_temperatura = static_cast<int>(std::lround(temp_f));
-
-        // Sensores de falha: agora podem ser forçados pela "Simulação da Mina"
-        sensores.i_falha_eletrica   = falhaElecForcada;
-        sensores.i_falha_hidraulica = falhaHidForcada;
-
-        // Falha de temperatura alta é simulada forçando a leitura do sensor
-        if (falhaTempForcada) {
-            sensores.i_temperatura = 130; // acima do limite de 120 °C
-        }
-
-        EstadosCaminhao estados;
-        {
-            std::lock_guard<std::mutex> lock(mtxEstados_);
-            estados = estados_;
-        }
-
-        ComandosCaminhao comandos;
-        {
-            std::lock_guard<std::mutex> lock(mtxComandos_);
-            comandos = comandos_;
-        }
-
-        AtuadoresCaminhao atuadores;
-        {
-            std::lock_guard<std::mutex> lock(mtxAtuadores_);
-            atuadores = atuadores_;
-        }
-
-        SetpointsCaminhao setpoints;
-        {
-            std::lock_guard<std::mutex> lock(mtxSetpoints_);
-            setpoints = setpoints_;
-        }
-
-        EstadoCaminhao estadoLogico;
-        {
-            std::lock_guard<std::mutex> lock(mtxEstadoLogico_);
-            estadoLogico = estadoLogico_;
-        }
-
-        RegistroBuffer reg{};
-        reg.tempoSimulacao_s = tempoSim;
-        reg.id_caminhao      = id_;
-        reg.estado           = estadoLogico;
-        reg.sensores         = sensores;
-        reg.atuadores        = atuadores;
-        reg.estados          = estados;
-        reg.comandos         = comandos;
-        reg.setpoints        = setpoints;
+        RegistroBuffer reg;
+        reg.tempoSimulacao_s = std::chrono::duration<double>(std::chrono::steady_clock::now()-inicio).count();
+        reg.id_caminhao = id_; reg.sensores = s;
+        { std::lock_guard<std::mutex> l(mtxEstados_); reg.estados = estados_; }
+        { std::lock_guard<std::mutex> l(mtxComandos_); reg.comandos = comandos_; }
+        { std::lock_guard<std::mutex> l(mtxAtuadores_); reg.atuadores = atuadores_; }
+        { std::lock_guard<std::mutex> l(mtxSetpoints_); reg.setpoints = setpoints_; }
+        { std::lock_guard<std::mutex> l(mtxEstadoLogico_); reg.estado = estadoLogico_; }
 
         buffer_.inserir(reg);
-
         std::this_thread::sleep_for(100ms);
     }
-
-    std::cout << "[Caminhao " << id_ << "] Tarefa TratamentoSensores encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 2) Lógica de Comando + consumo de eventos (FilaEventos)
-// -----------------------------------------------------------------------------
-
+// Lógica de Comando
 void Caminhao::tarefaLogicaComando() {
     double ultimoTempoBuffer = 0.0;
-    const double DIST_LIMITE = 1.0; // tolerância para considerar que chegou ao destino
-
+    
     while (rodando_) {
         RegistroBuffer reg{};
         if (!buffer_.tentarLerMaisRecente(reg)) {
             std::this_thread::sleep_for(50ms);
             continue;
         }
-
-        double dt = reg.tempoSimulacao_s - ultimoTempoBuffer;
-        if (dt < 0.0) dt = 0.0;
+        
         ultimoTempoBuffer = reg.tempoSimulacao_s;
 
-        ComandosCaminhao cmds = reg.comandos;
-        EstadosCaminhao  ests = reg.estados;
-
-        EstadosCaminhao novosEstados = ests;
-        bool houveRearmeEvento = false;
-
-        // 1) REARME: tem prioridade absoluta sobre eventos de falha
-        if (cmds.c_rearme) {
-            novosEstados.e_defeito = false;
-            houveRearmeEvento = true;
-
-            // Descarta todos os eventos pendentes (falhas antigas)
-            Evento lixo{};
-            while (filaEventos_.tentarRetirar(lixo)) {
-                // apenas descarta
+        // 1. Atualizar Estados (Comandos de Borda)
+        {
+            std::lock_guard<std::mutex> l(mtxEstados_);
+            if (reg.comandos.c_man) estados_.e_automatico = false;
+            if (reg.comandos.c_automatico) estados_.e_automatico = true;
+            
+            // Falhas
+            if (reg.sensores.i_falha_eletrica || reg.sensores.i_falha_hidraulica || reg.sensores.i_temperatura > 120) {
+                estados_.e_defeito = true;
             }
-        } else {
-            // 1b) Sem rearme: consome eventos da fila e ajusta e_defeito
-            Evento ev{};
-            while (filaEventos_.tentarRetirar(ev)) {
-                switch (ev.tipo) {
-                    case TipoEvento::FalhaTemperaturaAlta:
-                    case TipoEvento::FalhaEletrica:
-                    case TipoEvento::FalhaHidraulica:
-                        novosEstados.e_defeito = true;
-                        break;
-                    default:
-                        break;
-                }
+            // Rearme
+            if (reg.comandos.c_rearme) {
+                estados_.e_defeito = false;
             }
         }
 
-        // 2) Comandos do operador: automático / manual
-        if (cmds.c_automatico) {
-            novosEstados.e_automatico = true;
-        }
-        if (cmds.c_man) {
-            novosEstados.e_automatico = false;
-        }
-
+        // 2. Determinar o Estado Lógico (Parado vs Movimento vs Falha)
+        EstadoCaminhao novoEstado = EstadoCaminhao::Parado;
+        
+        // Pega a velocidade real para saber se está andando
+        double velocidadeAtual = 0.0;
         {
-            std::lock_guard<std::mutex> lock(mtxEstados_);
-            estados_ = novosEstados;
+            std::lock_guard<std::mutex> lf(mtxFisico_);
+            velocidadeAtual = fis_vel_;
         }
 
-        // 3) Dados de rota
-        bool rotaDefinida;
-        int dest_x = 0, dest_y = 0;
-        {
-            std::lock_guard<std::mutex> lock(mtxRota_);
-            rotaDefinida = rota_definida_;
-            dest_x       = rota_destino_x_;
-            dest_y       = rota_destino_y_;
-        }
+        bool estaAcelerar = (reg.atuadores.o_aceleracao != 0);
+        bool estaAAndar = (std::abs(velocidadeAtual) > 0.1);
 
-        // 4) Estado atual
-        EstadoCaminhao estadoAtual;
-        double tempoNoEstado;
-        {
-            std::lock_guard<std::mutex> lock(mtxEstadoLogico_);
-            estadoAtual    = estadoLogico_;
-            tempoNoEstado  = tempoNoEstado_s_;
-        }
-
-        EstadoCaminhao novoEstado = estadoAtual;
-
-        // -----------------------------------------------------------------
-        // 4a) Falha ativa -> sempre EM FALHA
-        // -----------------------------------------------------------------
-        if (novosEstados.e_defeito) {
+        if (reg.estados.e_defeito) {
             novoEstado = EstadoCaminhao::EmFalha;
         }
-        // -----------------------------------------------------------------
-        // 4b) MODO AUTOMÁTICO com rota definida
-        // -----------------------------------------------------------------
-        else if (novosEstados.e_automatico && rotaDefinida) {
-            double dx = static_cast<double>(dest_x - reg.sensores.i_posicao_x);
-            double dy = static_cast<double>(dest_y - reg.sensores.i_posicao_y);
-            double dist = std::sqrt(dx*dx + dy*dy);
-
-            switch (estadoAtual) {
-                case EstadoCaminhao::Parado:
-                    if (dist > DIST_LIMITE) {
-                        novoEstado = EstadoCaminhao::EmMovimento;
-                    }
-                    break;
-
-                case EstadoCaminhao::EmMovimento:
-                    if (dist <= DIST_LIMITE) {
-                        novoEstado = EstadoCaminhao::Parado;
-                    }
-                    break;
-
-                case EstadoCaminhao::EmFalha:
-                    // Sai de falha após rearme, volta parado
-                    novoEstado = EstadoCaminhao::Parado;
-                    break;
-            }
+        else if (estaAAndar || estaAcelerar) {
+            novoEstado = EstadoCaminhao::EmMovimento;
         }
-        // -----------------------------------------------------------------
-        // 4c) MODO MANUAL OU AUTO SEM ROTA DEFINIDA
-        // -----------------------------------------------------------------
         else {
-            if (!novosEstados.e_automatico && !novosEstados.e_defeito) {
-                if (reg.atuadores.o_aceleracao != 0) {
-                    novoEstado = EstadoCaminhao::EmMovimento;
-                } else {
-                    novoEstado = EstadoCaminhao::Parado;
-                }
-            } else {
-                if (estadoAtual == EstadoCaminhao::EmMovimento) {
-                    novoEstado = EstadoCaminhao::Parado;
-                }
-            }
-
-            if (!novosEstados.e_defeito &&
-                estadoAtual == EstadoCaminhao::EmFalha &&
-                houveRearmeEvento) {
-                novoEstado = EstadoCaminhao::Parado;
-            }
+            novoEstado = EstadoCaminhao::Parado;
         }
 
-        // 5) Atualiza estado lógico e tempo no estado
         {
-            std::lock_guard<std::mutex> lock(mtxEstadoLogico_);
-            if (novoEstado != estadoLogico_) {
-                estadoLogico_    = novoEstado;
-                tempoNoEstado_s_ = 0.0;
-            } else {
-                tempoNoEstado_s_ += dt;
-            }
-        }
-
-        // 6) Limpa comandos de borda
-        if (cmds.c_automatico || cmds.c_man || cmds.c_rearme) {
-            std::lock_guard<std::mutex> lock(mtxComandos_);
-            comandos_.c_automatico = false;
-            comandos_.c_man        = false;
-            comandos_.c_rearme     = false;
+            std::lock_guard<std::mutex> le(mtxEstadoLogico_);
+            estadoLogico_ = novoEstado;
         }
 
         std::this_thread::sleep_for(50ms);
     }
-
     std::cout << "[Caminhao " << id_ << "] Tarefa LogicaComando encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 3) Monitoramento de Falhas (sensores -> eventos)
-// -----------------------------------------------------------------------------
-
 void Caminhao::tarefaMonitoramentoFalhas() {
-    bool falhaTempAtiva       = false;
-    bool falhaEletricaAtiva   = false;
-    bool falhaHidraulicaAtiva = false;
-
-    while (rodando_) {
-        RegistroBuffer reg{};
-        if (!buffer_.tentarLerMaisRecente(reg)) {
-            std::this_thread::sleep_for(200ms);
-            continue;
-        }
-
-        int  temp       = reg.sensores.i_temperatura;
-        bool sFalhaElec = reg.sensores.i_falha_eletrica;
-        bool sFalhaHid  = reg.sensores.i_falha_hidraulica;
-
-        if (temp > 120) {
-            if (!falhaTempAtiva) {
-                Evento ev{};
-                ev.tipo = TipoEvento::FalhaTemperaturaAlta;
-                ev.descricao = "Temperatura acima do limite: T=" + std::to_string(temp) + " C";
-                ev.tempoSimulacao_s = reg.tempoSimulacao_s;
-                ev.id_caminhao = id_;
-                filaEventos_.postar(ev);
-                falhaTempAtiva = true;
-            }
-        } else if (temp < 100) {
-            falhaTempAtiva = false;
-        }
-
-        if (sFalhaElec && !falhaEletricaAtiva) {
-            Evento ev{};
-            ev.tipo = TipoEvento::FalhaEletrica;
-            ev.descricao = "Falha elétrica detectada (sensor).";
-            ev.tempoSimulacao_s = reg.tempoSimulacao_s;
-            ev.id_caminhao = id_;
-            filaEventos_.postar(ev);
-            falhaEletricaAtiva = true;
-        } else if (!sFalhaElec && falhaEletricaAtiva) {
-            falhaEletricaAtiva = false;
-        }
-
-        if (sFalhaHid && !falhaHidraulicaAtiva) {
-            Evento ev{};
-            ev.tipo = TipoEvento::FalhaHidraulica;
-            ev.descricao = "Falha hidráulica detectada (sensor).";
-            ev.tempoSimulacao_s = reg.tempoSimulacao_s;
-            ev.id_caminhao = id_;
-            filaEventos_.postar(ev);
-            falhaHidraulicaAtiva = true;
-        } else if (!sFalhaHid && falhaHidraulicaAtiva) {
-            falhaHidraulicaAtiva = false;
-        }
-
-        std::this_thread::sleep_for(200ms);
-    }
-
-    std::cout << "[Caminhao " << id_ << "] Tarefa MonitoramentoFalhas encerrada.\n";
+    while (rodando_) std::this_thread::sleep_for(200ms);
 }
-
-// -----------------------------------------------------------------------------
-// 4) Controle de Navegação + Simulação 2D (AUTO + MANUAL)
-// -----------------------------------------------------------------------------
 
 void Caminhao::tarefaControleNavegacao() {
     auto anterior = std::chrono::steady_clock::now();
-
-    const double a_max      = 2.0;
-    const double fric       = 0.2;
-    const double Kp_dist    = 1.0;
+    const double a_max = 2.0;
+    const double fric = 0.2;
+    const double Kp_dist = 1.0;
     const double DIST_PARAR = 1.0;
 
-    const int MANUAL_ACEL_VAL  = 50; // %
-    const int MANUAL_DIR_PASSO = 10; // graus por "tick" segurando tecla
+    const int MANUAL_ACEL_VAL = 50;
+    const int MANUAL_DIR_PASSO = 10;
 
     while (rodando_) {
         auto agora = std::chrono::steady_clock::now();
-        std::chrono::duration<double> diff = agora - anterior;
-        anterior = agora;
-        double dt = diff.count();
-        if (dt <= 0.0) dt = 0.01;
+        double dt = std::chrono::duration<double>(agora - anterior).count();
+        anterior = agora; if(dt<=0) dt=0.01;
 
         AtuadoresCaminhao atu;
+        { std::lock_guard<std::mutex> l(mtxAtuadores_); atu = atuadores_; }
+
+        // --- BLOCO DE FÍSICA (SIMULAÇÃO) ---
         {
-            std::lock_guard<std::mutex> lock(mtxAtuadores_);
-            atu = atuadores_;
-        }
+            std::lock_guard<std::mutex> l(mtxFisico_);
+            
+            // Atualiza o ângulo físico imediatamente com o valor do atuador
+            fis_ang_deg_ = static_cast<double>(atu.o_direcao); 
 
-        // Dinâmica física básica
-        {
-            std::lock_guard<std::mutex> lock(mtxFisico_);
-            fis_ang_deg_ = static_cast<double>(atu.o_direcao);
-            double ang_rad = fis_ang_deg_ * PI / 180.0;
-
-            double a = (static_cast<double>(atu.o_aceleracao) / 100.0) * a_max;
-
+            double rad = fis_ang_deg_ * PI / 180.0;
+            double a = (static_cast<double>(atu.o_aceleracao)/100.0) * a_max;
+            
             fis_vel_ += a * dt;
-            fis_vel_ -= fric * fis_vel_ * dt;
-
-            fis_pos_x_ += fis_vel_ * std::cos(ang_rad) * dt;
-            fis_pos_y_ += fis_vel_ * std::sin(ang_rad) * dt;
-
-            if (fis_pos_x_ < -1000.0) fis_pos_x_ = -1000.0;
-            if (fis_pos_x_ >  1000.0) fis_pos_x_ =  1000.0;
-            if (fis_pos_y_ < -1000.0) fis_pos_y_ = -1000.0;
-            if (fis_pos_y_ >  1000.0) fis_pos_y_ =  1000.0;
-
-            double base     = 40.0;
-            double ktemp    = 2.0;
-            double alvoTemp = base + ktemp * std::fabs(fis_vel_);
-            fis_temp_C_    += 0.5 * (alvoTemp - fis_temp_C_) * dt;
+            fis_vel_ -= fric * fis_vel_ * dt; // Atrito
+            
+            fis_pos_x_ += fis_vel_ * cos(rad) * dt;
+            fis_pos_y_ += fis_vel_ * sin(rad) * dt;
+            
+            // Simulação de temperatura (aquece com a velocidade)
+            double alvoTemp = 40.0 + 2.0 * fabs(fis_vel_);
+            fis_temp_C_ += 0.5 * (alvoTemp - fis_temp_C_) * dt;
         }
 
-        // Controle (auto ou manual)
+        // --- BLOCO DE CONTROLE (NAVEGAÇÃO) ---
         RegistroBuffer reg{};
-        if (buffer_.tentarLerMaisRecente(reg)) {
-            EstadosCaminhao   ests = reg.estados;
-            SetpointsCaminhao sp   = reg.setpoints;
-            SensoresCaminhao  s    = reg.sensores;
-            ComandosCaminhao  cmds = reg.comandos;
+        if(buffer_.tentarLerMaisRecente(reg)) {
+            EstadosCaminhao ests = reg.estados;
+            SetpointsCaminhao sp = reg.setpoints;
+            SensoresCaminhao s = reg.sensores;
+            ComandosCaminhao cmds = reg.comandos;
 
             AtuadoresCaminhao novosAtu = atu;
+            bool temDefeito = ests.e_defeito || (reg.estado == EstadoCaminhao::EmFalha);
 
-            bool temDefeitoOuFalha = ests.e_defeito || (reg.estado == EstadoCaminhao::EmFalha);
-
-            if (ests.e_automatico && !temDefeitoOuFalha) {
-                // ---------------- MODO AUTOMÁTICO ----------------
-                double dx   = static_cast<double>(sp.sp_posicao_x - s.i_posicao_x);
-                double dy   = static_cast<double>(sp.sp_posicao_y - s.i_posicao_y);
-                double dist = std::sqrt(dx*dx + dy*dy);
-
+            // 1. Segurança (Anticolisão - Redução de Velocidade)
+            if (em_reducao_seguranca_) {
+                novosAtu.o_aceleracao = 0; 
+            }
+            // 2. Automático (Navegação por Waypoint)
+            else if (ests.e_automatico && !temDefeito) {
+                double dx = static_cast<double>(sp.sp_posicao_x - s.i_posicao_x);
+                double dy = static_cast<double>(sp.sp_posicao_y - s.i_posicao_y);
+                double dist = sqrt(dx*dx + dy*dy);
+                
+                // Controle de Direção
                 double cmd_dir = static_cast<double>(sp.sp_angulo_x);
-
-                while (cmd_dir > 180.0)  cmd_dir -= 360.0;
+                while (cmd_dir > 180.0) cmd_dir -= 360.0;
                 while (cmd_dir < -180.0) cmd_dir += 360.0;
-
                 novosAtu.o_direcao = static_cast<int>(std::lround(cmd_dir));
-
+                
+                // Controle de Aceleração
                 double cmd_acel = Kp_dist * dist;
-                if (cmd_acel > 100.0) cmd_acel = 100.0;
-                if (cmd_acel < 0.0)   cmd_acel = 0.0;
-
-                if (dist <= DIST_PARAR) {
-                    cmd_acel = 0.0;
-                }
-
+                if(cmd_acel > 100.0) cmd_acel = 100.0;
+                if(cmd_acel < 0.0) cmd_acel = 0.0;
+                
+                if(dist <= DIST_PARAR) cmd_acel = 0.0;
+                
                 novosAtu.o_aceleracao = static_cast<int>(std::lround(cmd_acel));
-            } else {
-                // ---------------- NÃO AUTOMÁTICO ----------------
-                if (!ests.e_automatico && !temDefeitoOuFalha) {
-                    // -------- MODO MANUAL (sem defeito) --------
-                    int dir = novosAtu.o_direcao;
+            } 
+            // 3. Manual
+            else if (!ests.e_automatico && !temDefeito) {
+                int dir = novosAtu.o_direcao;
+                if (cmds.c_direita) dir -= MANUAL_DIR_PASSO;
+                if (cmds.c_esquerda) dir += MANUAL_DIR_PASSO;
+                if (dir > 180) dir = 180;
+                if (dir < -180) dir = -180;
+                novosAtu.o_direcao = dir;
 
-                    if (cmds.c_direita && !cmds.c_esquerda) {
-                        dir += MANUAL_DIR_PASSO;
-                    } else if (cmds.c_esquerda && !cmds.c_direita) {
-                        dir -= MANUAL_DIR_PASSO;
-                    }
-
-                    if (dir > 180) dir = 180;
-                    if (dir < -180) dir = -180;
-
-                    novosAtu.o_direcao = dir;
-                    novosAtu.o_aceleracao = cmds.c_acelera ? MANUAL_ACEL_VAL : 0;
-                } else {
-                    // Defeito
-                    novosAtu.o_aceleracao = 0;
-                    novosAtu.o_direcao    = s.i_angulo_x;
+                novosAtu.o_aceleracao = cmds.c_acelera ? MANUAL_ACEL_VAL : 0;
+            } 
+            // 4. Defeito (Parada Total - Travagem de Emergência)
+            else {
+                novosAtu.o_aceleracao = 0;
+                
+                // --- CORREÇÃO CRÍTICA: TRAVAGEM IMEDIATA ---
+                // Se houver defeito, forçamos a velocidade física a zero.
+                // Isso evita que o camião continue a andar por inércia e
+                // permite que a temperatura baixe.
+                {
+                    std::lock_guard<std::mutex> lf(mtxFisico_);
+                    fis_vel_ = 0.0; 
                 }
+                // -------------------------------------------
             }
 
-            {
-                std::lock_guard<std::mutex> lock(mtxAtuadores_);
-                atuadores_ = novosAtu;
-            }
+            { std::lock_guard<std::mutex> l(mtxAtuadores_); atuadores_ = novosAtu; }
         }
-
         std::this_thread::sleep_for(50ms);
     }
-
     std::cout << "[Caminhao " << id_ << "] Tarefa ControleNavegacao encerrada.\n";
 }
-
-// -----------------------------------------------------------------------------
-// 5) Planejamento de Rota
-// -----------------------------------------------------------------------------
 
 void Caminhao::tarefaPlanejamentoRota() {
     while (rodando_) {
         RegistroBuffer reg{};
-        if (!buffer_.tentarLerMaisRecente(reg)) {
-            std::this_thread::sleep_for(100ms);
-            continue;
+        if (buffer_.tentarLerMaisRecente(reg)) {
+            std::lock_guard<std::mutex> l(mtxSetpoints_);
+            
+            if(rota_definida_) {
+                setpoints_.sp_posicao_x = rota_destino_x_;
+                setpoints_.sp_posicao_y = rota_destino_y_;
+                
+                double dx = static_cast<double>(rota_destino_x_ - reg.sensores.i_posicao_x);
+                double dy = static_cast<double>(rota_destino_y_ - reg.sensores.i_posicao_y);
+                if (std::abs(dx) > 1.0 || std::abs(dy) > 1.0) {
+                    double ang_rad = std::atan2(dy, dx);
+                    setpoints_.sp_angulo_x = static_cast<int>(std::lround(ang_rad * 180.0/PI));
+                }
+            } else {
+                setpoints_.sp_posicao_x = reg.sensores.i_posicao_x;
+                setpoints_.sp_posicao_y = reg.sensores.i_posicao_y;
+                setpoints_.sp_angulo_x = reg.sensores.i_angulo_x;
+            }
         }
-
-        bool rotaDefinida;
-        int dest_x = 0, dest_y = 0;
-        {
-            std::lock_guard<std::mutex> lock(mtxRota_);
-            rotaDefinida = rota_definida_;
-            dest_x       = rota_destino_x_;
-            dest_y       = rota_destino_y_;
-        }
-
-        SetpointsCaminhao sp = reg.setpoints;
-
-        if (rotaDefinida &&
-            reg.estados.e_automatico &&
-            !reg.estados.e_defeito &&
-            reg.estado != EstadoCaminhao::EmFalha) {
-
-            sp.sp_posicao_x = dest_x;
-            sp.sp_posicao_y = dest_y;
-
-            double dx = static_cast<double>(dest_x - reg.sensores.i_posicao_x);
-            double dy = static_cast<double>(dest_y - reg.sensores.i_posicao_y);
-            double ang_rad = std::atan2(dy, dx);
-            double ang_deg = ang_rad * 180.0 / PI;
-            sp.sp_angulo_x = static_cast<int>(std::lround(ang_deg));
-        } else {
-            sp.sp_posicao_x = reg.sensores.i_posicao_x;
-            sp.sp_posicao_y = reg.sensores.i_posicao_y;
-            sp.sp_angulo_x  = reg.sensores.i_angulo_x;
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(mtxSetpoints_);
-            setpoints_ = sp;
-        }
-
         std::this_thread::sleep_for(100ms);
     }
-
-    std::cout << "[Caminhao " << id_ << "] Tarefa PlanejamentoRota encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// 6) Coletor de Dados (inclui MQTT e LOG)
-// -----------------------------------------------------------------------------
-
+// --- Coletor de Dados ---
 void Caminhao::tarefaColetorDados() {
     bool defeitoAnterior = false;
+    bool manualAnterior = false;
+    bool alertaTempAnterior = false;
+
+    // Códigos ANSI
+    const std::string COR_AMARELA = "\033[1;33m";
+    const std::string COR_VERMELHA = "\033[1;31m";
+    const std::string COR_RESET = "\033[0m";
 
     while (rodando_) {
         RegistroBuffer reg{};
         if (buffer_.tentarLerMaisRecente(reg)) {
-
             std::string textoEvento;
+            int temp = reg.sensores.i_temperatura;
+
+            // 1. Detecta Eventos de Falha
             if (!defeitoAnterior && reg.estados.e_defeito) {
-                textoEvento = "Entrada em falha";
-            } else if (defeitoAnterior && !reg.estados.e_defeito) {
-                textoEvento = "Rearme de falha";
-            } else {
-                textoEvento = "";
+                if (reg.sensores.i_falha_eletrica) textoEvento = "FALHA ELETRICA";
+                else if (reg.sensores.i_falha_hidraulica) textoEvento = "FALHA HIDRAULICA";
+                else if (temp > 120) textoEvento = "SOBREAQUECIMENTO (>120C)";
+                else textoEvento = "FALHA CRITICA GENERICA";
             }
-            defeitoAnterior = reg.estados.e_defeito;
-
-            // Saída no terminal (debug local)
-            std::cout << "[Caminhao " << id_ << "] t=" << reg.tempoSimulacao_s
-                      << "s | Estado=" << estadoToString(reg.estado)
-                      << " | x=" << reg.sensores.i_posicao_x
-                      << " | y=" << reg.sensores.i_posicao_y
-                      << " | ang=" << reg.sensores.i_angulo_x << " deg"
-                      << " | Tmot=" << reg.sensores.i_temperatura << " C"
-                      << " | e_defeito=" << (reg.estados.e_defeito ? 1 : 0)
-                      << " | e_auto="   << (reg.estados.e_automatico ? 1 : 0);
-
-            if (!textoEvento.empty()) {
-                std::cout << " | evento=" << textoEvento;
+            else if (defeitoAnterior && !reg.estados.e_defeito) {
+                textoEvento = "REARME";
             }
-            std::cout << "\n";
+            
+            // 2. Alerta de Temperatura (Apenas Aviso)
+            else if (temp > 95 && temp <= 120) {
+                if (!alertaTempAnterior) {
+                    textoEvento = "ALERTA TEMP (>95C)";
+                    alertaTempAnterior = true;
+                }
+            }
+            else {
+                alertaTempAnterior = false; 
+            }
 
-            // Escrita em Arquivo (CSV)
-            {
-                std::lock_guard<std::mutex> lock(mtxLog_);
-                if (arquivoLog_.is_open()) {
-                    arquivoLog_ << reg.tempoSimulacao_s << ";"
-                                << id_ << ";"
-                                << estadoToString(reg.estado) << ";"
-                                << (reg.estados.e_defeito ? 1 : 0) << ";"
-                                << (reg.estados.e_automatico ? 1 : 0) << ";"
-                                << reg.sensores.i_posicao_x << ";"
-                                << reg.sensores.i_posicao_y << ";"
-                                << reg.sensores.i_angulo_x << ";"
-                                << reg.sensores.i_temperatura << ";"
-                                << reg.atuadores.o_aceleracao << ";"
-                                << reg.atuadores.o_direcao << ";"
-                                << textoEvento
-                                << "\n";
-                    arquivoLog_.flush();
+            // 3. Modos de Operação
+            if (textoEvento.empty()) {
+                if (!manualAnterior && reg.comandos.c_man) {
+                    textoEvento = "MODO MANUAL / EMERGENCIA";
+                }
+                else if (manualAnterior && reg.comandos.c_automatico) {
+                    textoEvento = "MODO AUTO";
                 }
             }
 
-            // Publicação MQTT (JSON)
-            if (mqtt_) {
-                std::string json = "{";
-                json += "\"id\": " + std::to_string(id_) + ",";
-                json += "\"x\": " + std::to_string(reg.sensores.i_posicao_x) + ",";
-                json += "\"y\": " + std::to_string(reg.sensores.i_posicao_y) + ",";
-                json += "\"ang\": " + std::to_string(reg.sensores.i_angulo_x) + ",";
-                json += "\"temp\": " + std::to_string(reg.sensores.i_temperatura) + ",";
-                json += "\"defeito\": " + std::string(reg.estados.e_defeito ? "true" : "false") + ",";
-                json += "\"auto\": " + std::string(reg.estados.e_automatico ? "true" : "false");
-                json += "}";
+            defeitoAnterior = reg.estados.e_defeito;
+            manualAnterior = reg.comandos.c_man;
 
-                std::string topicoEstado = "mina/caminhao/" + std::to_string(id_) + "/estado";
-                mqtt_->publicar(topicoEstado, json);
+            // Log Terminal: Imprime SEMPRE a posição e estado
+            std::cout << (reg.estados.e_defeito ? COR_VERMELHA : "") 
+                      << "[Caminhao " << id_ << "] "
+                      << "x=" << reg.sensores.i_posicao_x << " "
+                      << "y=" << reg.sensores.i_posicao_y << " "
+                      << "def=" << reg.estados.e_defeito
+                      << (textoEvento.empty() ? "" : (" | " + textoEvento)) 
+                      << (reg.estados.e_defeito ? COR_RESET : "") << "\n";
+
+            // Log CSV
+            {
+                std::lock_guard<std::mutex> lock(mtxLog_);
+                if (arquivoLog_.is_open()) {
+                    arquivoLog_ << reg.tempoSimulacao_s << ";" << id_ << ";"
+                                << estadoToString(reg.estado) << ";"
+                                << reg.estados.e_defeito << ";" << reg.estados.e_automatico << ";"
+                                << reg.sensores.i_posicao_x << ";" << reg.sensores.i_posicao_y << ";"
+                                << reg.sensores.i_angulo_x << ";" << reg.sensores.i_temperatura << ";"
+                                << reg.atuadores.o_aceleracao << ";" << reg.atuadores.o_direcao << ";"
+                                << textoEvento << "\n";
+                    arquivoLog_.flush(); 
+                }
+            }
+            
+            // MQTT
+            if (mqtt_) {
+                std::string json = "{ \"id\": " + std::to_string(id_) + 
+                ", \"x\": " + std::to_string(reg.sensores.i_posicao_x) +
+                ", \"y\": " + std::to_string(reg.sensores.i_posicao_y) +
+                ", \"temp\": " + std::to_string(reg.sensores.i_temperatura) + 
+                ", \"defeito\": " + (reg.estados.e_defeito?"true":"false") +
+                ", \"auto\": " + (reg.estados.e_automatico?"true":"false") + " }";
+                mqtt_->publicar("mina/caminhao/"+std::to_string(id_)+"/estado", json);
             }
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(500ms);
     }
-
     std::cout << "[Caminhao " << id_ << "] Tarefa ColetorDados encerrada.\n";
 }
 
-// -----------------------------------------------------------------------------
-// Callback MQTT para receber comandos
-// -----------------------------------------------------------------------------
-
 void Caminhao::processarMensagemMqtt(const std::string& topico, const std::string& payload) {
+    (void)topico; 
     std::cout << "[MQTT Recv " << id_ << "] " << payload << std::endl;
-
-    // Protocolo simples:
-    // Para rota: "ROTA:x_ini,y_ini,x_dest,y_dest"
-    // Para comandos: "CMD:AUTO", "CMD:MANUAL", "CMD:REARME"
 
     if (payload.rfind("ROTA:", 0) == 0) {
         int x1, y1, x2, y2;
-        // Pula os 5 caracteres de "ROTA:"
         if (sscanf(payload.c_str() + 5, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4) {
-            std::cout << "[MQTT] Nova rota recebida via rede!\n";
-            this->definirRota(x1, y1, x2, y2);
+            definirRota(x1, y1, x2, y2);
         }
     }
-    else if (payload == "CMD:AUTO") {
-        this->comandarAutomatico();
-    }
-    else if (payload == "CMD:MANUAL") {
-        this->comandarManual();
-    }
-    else if (payload == "CMD:REARME") {
-        this->comandarRearme();
-    }
+    else if (payload == "CMD:AUTO") comandarAutomatico();
+    else if (payload == "CMD:MANUAL") comandarManual();
+    else if (payload == "CMD:REARME") comandarRearme();
 }

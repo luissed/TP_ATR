@@ -59,6 +59,7 @@
         "sstream": "cpp",
         "variant": "cpp",
         "fstream": "cpp",
+<<<<<<< HEAD
         "cstring": "cpp",
         "forward_list": "cpp",
         "ios": "cpp",
@@ -79,5 +80,10 @@
         "xstring": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp"
+=======
+        "queue": "cpp",
+        "map": "cpp",
+        "cinttypes": "cpp"
+>>>>>>> main
     }
 }

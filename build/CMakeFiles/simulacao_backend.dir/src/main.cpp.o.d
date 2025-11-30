@@ -149,7 +149,48 @@ CMakeFiles/simulacao_backend.dir/src/main.cpp.o: \
  /usr/include/c++/13/bits/locale_facets.tcc \
  /usr/include/c++/13/bits/basic_ios.tcc \
  /usr/include/c++/13/bits/ostream.tcc /usr/include/c++/13/istream \
- /usr/include/c++/13/bits/istream.tcc \
+ /usr/include/c++/13/bits/istream.tcc /usr/include/c++/13/thread \
+ /usr/include/c++/13/bits/std_thread.h \
+ /usr/include/c++/13/bits/unique_ptr.h \
+ /usr/include/c++/13/bits/this_thread_sleep.h \
+ /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
+ /usr/include/c++/13/cstdint \
+ /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
+ /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+ /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
+ /usr/include/c++/13/limits /usr/include/c++/13/ctime \
+ /usr/include/c++/13/bits/parse_numbers.h /usr/include/c++/13/chrono \
+ /usr/include/c++/13/csignal /usr/include/signal.h \
+ /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
+ /usr/include/x86_64-linux-gnu/bits/signum-arch.h \
+ /usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h \
+ /usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h \
+ /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h \
+ /usr/include/x86_64-linux-gnu/bits/siginfo-arch.h \
+ /usr/include/x86_64-linux-gnu/bits/siginfo-consts.h \
+ /usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h \
+ /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h \
+ /usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h \
+ /usr/include/x86_64-linux-gnu/bits/sigevent-consts.h \
+ /usr/include/x86_64-linux-gnu/bits/sigaction.h \
+ /usr/include/x86_64-linux-gnu/bits/sigcontext.h \
+ /usr/include/x86_64-linux-gnu/bits/types/stack_t.h \
+ /usr/include/x86_64-linux-gnu/sys/ucontext.h \
+ /usr/include/x86_64-linux-gnu/bits/sigstack.h \
+ /usr/include/x86_64-linux-gnu/bits/sigstksz.h /usr/include/unistd.h \
+ /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
+ /usr/include/x86_64-linux-gnu/bits/environments.h \
+ /usr/include/x86_64-linux-gnu/bits/confname.h \
+ /usr/include/x86_64-linux-gnu/bits/getopt_posix.h \
+ /usr/include/x86_64-linux-gnu/bits/getopt_core.h \
+ /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
+ /usr/include/linux/close_range.h \
+ /usr/include/x86_64-linux-gnu/bits/ss_flags.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h \
+ /usr/include/x86_64-linux-gnu/bits/sigthread.h \
+ /usr/include/x86_64-linux-gnu/bits/signal_ext.h \
+ /usr/include/c++/13/atomic /usr/include/c++/13/bits/atomic_base.h \
+ /usr/include/c++/13/bits/atomic_lockfree_defines.h \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/SimulacaoMina.hpp \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_uninitialized.h \
  /usr/include/c++/13/bits/stl_vector.h \
@@ -157,35 +198,50 @@ CMakeFiles/simulacao_backend.dir/src/main.cpp.o: \
  /usr/include/c++/13/bits/vector.tcc /usr/include/c++/13/memory \
  /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
- /usr/include/c++/13/bits/align.h \
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
- /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
- /usr/include/x86_64-linux-gnu/bits/stdint-least.h \
- /usr/include/c++/13/bits/unique_ptr.h \
- /usr/include/c++/13/bits/shared_ptr.h \
+ /usr/include/c++/13/bits/align.h /usr/include/c++/13/bits/shared_ptr.h \
  /usr/include/c++/13/bits/shared_ptr_base.h \
  /usr/include/c++/13/bits/allocated_ptr.h \
  /usr/include/c++/13/ext/aligned_buffer.h \
  /usr/include/c++/13/ext/concurrence.h \
  /usr/include/c++/13/bits/shared_ptr_atomic.h \
- /usr/include/c++/13/bits/atomic_base.h \
- /usr/include/c++/13/bits/atomic_lockfree_defines.h \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
- /usr/include/c++/13/pstl/execution_defs.h \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Caminhao.hpp \
- /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
- /usr/include/c++/13/bits/this_thread_sleep.h \
- /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
- /usr/include/c++/13/cstdint /usr/include/c++/13/limits \
- /usr/include/c++/13/ctime /usr/include/c++/13/bits/parse_numbers.h \
- /usr/include/c++/13/atomic /usr/include/c++/13/mutex \
+ /usr/include/c++/13/pstl/execution_defs.h /usr/include/c++/13/mutex \
  /usr/include/c++/13/bits/std_mutex.h \
- /usr/include/c++/13/bits/unique_lock.h /usr/include/c++/13/fstream \
- /usr/include/c++/13/bits/codecvt.h \
+ /usr/include/c++/13/bits/unique_lock.h \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Caminhao.hpp \
+ /usr/include/c++/13/fstream /usr/include/c++/13/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
- /usr/include/c++/13/bits/fstream.tcc \
+ /usr/include/c++/13/bits/fstream.tcc /usr/include/c++/13/random \
+ /usr/include/c++/13/cmath /usr/include/math.h \
+ /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+ /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+ /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+ /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+ /usr/include/c++/13/bits/specfun.h /usr/include/c++/13/tr1/gamma.tcc \
+ /usr/include/c++/13/tr1/special_function_util.h \
+ /usr/include/c++/13/tr1/bessel_function.tcc \
+ /usr/include/c++/13/tr1/beta_function.tcc \
+ /usr/include/c++/13/tr1/ell_integral.tcc \
+ /usr/include/c++/13/tr1/exp_integral.tcc \
+ /usr/include/c++/13/tr1/hypergeometric.tcc \
+ /usr/include/c++/13/tr1/legendre_function.tcc \
+ /usr/include/c++/13/tr1/modified_bessel_func.tcc \
+ /usr/include/c++/13/tr1/poly_hermite.tcc \
+ /usr/include/c++/13/tr1/poly_laguerre.tcc \
+ /usr/include/c++/13/tr1/riemann_zeta.tcc \
+ /usr/include/c++/13/bits/random.h \
+ /usr/include/c++/13/bits/uniform_int_dist.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/opt_random.h \
+ /usr/include/c++/13/bits/random.tcc /usr/include/c++/13/numeric \
+ /usr/include/c++/13/bits/stl_numeric.h \
+ /usr/include/c++/13/pstl/glue_numeric_defs.h \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Tipos.hpp \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/BufferCircular.hpp \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/FilaEventos.hpp \
@@ -198,11 +254,10 @@ CMakeFiles/simulacao_backend.dir/src/main.cpp.o: \
  /usr/include/MQTTExportDeclarations.h /usr/include/MQTTProperties.h \
  /usr/include/MQTTReasonCodes.h /usr/include/MQTTSubscribeOpts.h \
  /usr/include/MQTTClientPersistence.h /usr/include/mqtt/types.h \
- /usr/include/c++/13/chrono /usr/include/mqtt/token.h \
- /usr/include/mqtt/iaction_listener.h /usr/include/mqtt/exception.h \
- /usr/include/mqtt/properties.h /usr/include/MQTTProperties.h \
- /usr/include/mqtt/buffer_ref.h /usr/include/c++/13/cstring \
- /usr/include/string.h /usr/include/strings.h \
+ /usr/include/mqtt/token.h /usr/include/mqtt/iaction_listener.h \
+ /usr/include/mqtt/exception.h /usr/include/mqtt/properties.h \
+ /usr/include/MQTTProperties.h /usr/include/mqtt/buffer_ref.h \
+ /usr/include/c++/13/cstring /usr/include/string.h /usr/include/strings.h \
  /usr/include/mqtt/string_collection.h /usr/include/c++/13/map \
  /usr/include/c++/13/bits/stl_tree.h \
  /usr/include/c++/13/bits/node_handle.h \
@@ -215,7 +270,6 @@ CMakeFiles/simulacao_backend.dir/src/main.cpp.o: \
  /usr/include/mqtt/thread_queue.h /usr/include/c++/13/algorithm \
  /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
- /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/mqtt/iasync_client.h /usr/include/mqtt/connect_options.h \
  /usr/include/mqtt/topic.h /usr/include/mqtt/subscribe_options.h \

@@ -1,67 +1,53 @@
 #include <iostream>
-
+#include <thread>
+#include <chrono>
+#include <csignal>
+#include <atomic>
 #include "SimulacaoMina.hpp"
 
-int main() {
-    std::cout << "Interface de Simulacao da Mina\n";
+// Variável para controlar o encerramento suave com Ctrl+C
+std::atomic<bool> g_rodando(true);
 
-    // Backend da mina:
-    //
-    // - capacidadeBufferPadrao = 200;
-    // - numCaminhoes inicial = 0 -> vamos criar via criarNovoCaminhao().
-    SimulacaoMina mina(0, 200);
+void signalHandler(int signum) {
+    std::cout << "\n[SISTEMA] Interrupcao recebida (" << signum << "). Encerrando...\n";
+    g_rodando = false;
+}
 
-    // SIMULAÇÃO DA MINA: criação de 1 caminhão via "interface de simulação"
-    int idCaminhao1 = mina.criarNovoCaminhao(); // id = 1
+int main(int argc, char* argv[]) {
+    // Configura o sinal de Ctrl+C
+    std::signal(SIGINT, signalHandler);
 
-    // GESTÃO DA MINA: define a rota do caminhão 1: (0,0) -> (100,50)
-    // (isso é mais pra testar AUTO antes do MANUAL)
-    mina.definirRotaCaminhao(idCaminhao1, 0, 0, 100, 50);
+    std::cout << "=== SIMULACAO BACKEND (Mina Inteligente) ===\n";
+    std::cout << "Aguardando conexao MQTT...\n";
 
-    // Inicia as tarefas internas de todos os caminhões
+    // Define número de caminhões (Padrão 0, cria dinamicamente ou via argumento)
+    int numCaminhoes = 0;
+    if (argc > 1) {
+        numCaminhoes = std::atoi(argv[1]);
+    }
+
+    // Cria a mina (Backend)
+    SimulacaoMina mina(numCaminhoes, 200);
+
+    // Se não passou argumento, cria 1 caminhão inicial para teste
+    if (numCaminhoes == 0) {
+        mina.criarNovoCaminhao(); 
+    }
+
+    // Inicia threads e MQTT
     mina.iniciar();
 
-    // Pega uma referência para o caminhão 1 (para mandar comandos)
-    Caminhao& cam1 = mina.getCaminhaoPorId(idCaminhao1);
+    std::cout << "Sistema rodando! Use a Interface Python ou terminais para controlar.\n";
+    std::cout << "Pressione Ctrl+C para encerrar.\n";
 
-    // -------------------------------------------------------------------------
-    // FASE 1: AUTO sem falhas (só pra ver o controlador funcionando)
-    // -------------------------------------------------------------------------
-    std::cout << "\n>>> [Interface] Fase 1: caminhão em modo automático (sem falhas) por 5s\n";
-    cam1.comandarAutomatico();
-    mina.rodarPorSegundos(5);
+    // Loop principal mantém o programa vivo até receber sinal de parada
+    while (g_rodando) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
-    // -------------------------------------------------------------------------
-    // FASE 2: MODO MANUAL - anda reto (acelerando) por 5 s
-    // -------------------------------------------------------------------------
-    std::cout << "\n>>> [Interface] Fase 2: caminhão em modo manual, acelerando reto por 5s\n";
-    cam1.comandarManual();          // troca para manual
-    cam1.setComandoAcelerar(true);  // segurando "acelera"
-    cam1.setComandoDireita(false);
-    cam1.setComandoEsquerda(false);
-    mina.rodarPorSegundos(5);
-
-    // -------------------------------------------------------------------------
-    // FASE 3: MODO MANUAL - continua acelerando e vira para a direita
-    // -------------------------------------------------------------------------
-    std::cout << "\n>>> [Interface] Fase 3: manual, acelerando e virando para a direita por 5s\n";
-    cam1.setComandoAcelerar(true);
-    cam1.setComandoDireita(true);   // como se o operador segurasse a tecla de virar à direita
-    cam1.setComandoEsquerda(false);
-    mina.rodarPorSegundos(5);
-
-    // -------------------------------------------------------------------------
-    // FASE 4: MODO MANUAL - solta aceleração, direção neutra
-    // -------------------------------------------------------------------------
-    std::cout << "\n>>> [Interface] Fase 4: manual, soltando acelerador (sem girar o volante) por 5s\n";
-    cam1.setComandoAcelerar(false);
-    cam1.setComandoDireita(false);
-    cam1.setComandoEsquerda(false);
-    mina.rodarPorSegundos(5);
-
-    // Encerra simulação
+    std::cout << "[SISTEMA] Parando simulacao...\n";
     mina.parar();
+    std::cout << "[SISTEMA] Encerrado com sucesso.\n";
 
-    std::cout << "Simulacao da Mina encerrada\n";
     return 0;
 }

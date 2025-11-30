@@ -121,24 +121,23 @@ CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o: \
  /usr/include/c++/13/bits/atomic_lockfree_defines.h \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
- /usr/include/c++/13/pstl/execution_defs.h \
- /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Caminhao.hpp \
- /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
- /usr/include/c++/13/bits/this_thread_sleep.h \
+ /usr/include/c++/13/pstl/execution_defs.h /usr/include/c++/13/mutex \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
  /usr/include/c++/13/cstdint /usr/include/c++/13/limits \
  /usr/include/c++/13/ctime /usr/include/c++/13/bits/parse_numbers.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/error_constants.h \
  /usr/include/c++/13/cerrno /usr/include/errno.h \
  /usr/include/x86_64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/x86_64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/x86_64-linux-gnu/bits/types/error_t.h \
- /usr/include/c++/13/atomic /usr/include/c++/13/mutex \
- /usr/include/x86_64-linux-gnu/c++/13/bits/error_constants.h \
  /usr/include/c++/13/bits/std_mutex.h \
- /usr/include/c++/13/bits/unique_lock.h /usr/include/c++/13/fstream \
- /usr/include/c++/13/istream /usr/include/c++/13/ios \
- /usr/include/c++/13/bits/char_traits.h \
+ /usr/include/c++/13/bits/unique_lock.h /usr/include/c++/13/atomic \
+ /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
+ /usr/include/c++/13/bits/this_thread_sleep.h \
+ /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Caminhao.hpp \
+ /usr/include/c++/13/fstream /usr/include/c++/13/istream \
+ /usr/include/c++/13/ios /usr/include/c++/13/bits/char_traits.h \
  /usr/include/c++/13/bits/localefwd.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++locale.h \
  /usr/include/c++/13/clocale /usr/include/locale.h \
@@ -182,7 +181,35 @@ CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o: \
  /usr/include/c++/13/bits/istream.tcc /usr/include/c++/13/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
- /usr/include/c++/13/bits/fstream.tcc \
+ /usr/include/c++/13/bits/fstream.tcc /usr/include/c++/13/random \
+ /usr/include/c++/13/cmath /usr/include/math.h \
+ /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+ /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+ /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+ /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+ /usr/include/c++/13/bits/specfun.h /usr/include/c++/13/tr1/gamma.tcc \
+ /usr/include/c++/13/tr1/special_function_util.h \
+ /usr/include/c++/13/tr1/bessel_function.tcc \
+ /usr/include/c++/13/tr1/beta_function.tcc \
+ /usr/include/c++/13/tr1/ell_integral.tcc \
+ /usr/include/c++/13/tr1/exp_integral.tcc \
+ /usr/include/c++/13/tr1/hypergeometric.tcc \
+ /usr/include/c++/13/tr1/legendre_function.tcc \
+ /usr/include/c++/13/tr1/modified_bessel_func.tcc \
+ /usr/include/c++/13/tr1/poly_hermite.tcc \
+ /usr/include/c++/13/tr1/poly_laguerre.tcc \
+ /usr/include/c++/13/tr1/riemann_zeta.tcc \
+ /usr/include/c++/13/bits/random.h \
+ /usr/include/c++/13/bits/uniform_int_dist.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/opt_random.h \
+ /usr/include/c++/13/bits/random.tcc /usr/include/c++/13/numeric \
+ /usr/include/c++/13/bits/stl_numeric.h \
+ /usr/include/c++/13/pstl/glue_numeric_defs.h \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/Tipos.hpp \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/BufferCircular.hpp \
  /mnt/c/Users/amnda/Downloads/ATR-\ PROJETO/TP_ATR/include/FilaEventos.hpp \
@@ -212,7 +239,6 @@ CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o: \
  /usr/include/mqtt/thread_queue.h /usr/include/c++/13/algorithm \
  /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
- /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/mqtt/iasync_client.h /usr/include/mqtt/connect_options.h \
  /usr/include/mqtt/topic.h /usr/include/mqtt/subscribe_options.h \
