@@ -53,6 +53,9 @@ int main() {
     // nenhum caminhao selecionado no inicio
     int idSelecionado = -1;
 
+    // NOVO: Estado de visibilidade do painel de informações
+    bool painelVisivel = true;
+
     // --- ESTILIZACAO DO BOTAO NOVO (Visual melhorado, mesma logica de hit) ---
     sf::RectangleShape botaoNovo(sf::Vector2f(40.f, 30.f));
     botaoNovo.setPosition(20.f, 20.f); // Leve ajuste de margem
@@ -83,6 +86,17 @@ int main() {
         win.draw(linhaV, 2, sf::Lines);
     };
 
+    // NOVO: Botão de Ocultar/Exibir Painel
+    const float btnInfoWidth = 60.f;
+    const float btnInfoHeight = 25.f;
+    sf::RectangleShape botaoInfo(sf::Vector2f(btnInfoWidth, btnInfoHeight));
+    // Posição no canto superior direito
+    botaoInfo.setPosition(WINDOW_WIDTH - btnInfoWidth - 10.f, 20.f); 
+    // Cor azul claro/cinza para ser diferente
+    botaoInfo.setFillColor(sf::Color(70, 80, 100)); 
+    botaoInfo.setOutlineColor(sf::Color::White);
+    botaoInfo.setOutlineThickness(1.f);
+
     // fonte para textos do painel lateral
     sf::Font fonte;
     bool fonteOk = false;
@@ -91,7 +105,7 @@ int main() {
         fonteOk = true;
     } else {
         std::cout << "[GUI] Nao foi possivel carregar fonte. "
-                     "Painel sera sem texto.\n";
+                      "Painel sera sem texto.\n";
     }
 
     auto criarTexto = [&](const std::string& s, float x, float y, int size = 14, sf::Color cor = sf::Color::White) {
@@ -113,7 +127,8 @@ int main() {
     
     // Fundo do painel (Visual Glass)
     sf::RectangleShape painelInfo(sf::Vector2f(painelWidth, painelHeight));
-    painelInfo.setPosition(WINDOW_WIDTH - painelWidth - 10.f, 50.f);
+    // Ajuste a posição inicial, o painel começa abaixo do novo botão 'INFO'
+    painelInfo.setPosition(WINDOW_WIDTH - painelWidth - 10.f, botaoInfo.getPosition().y + botaoInfo.getSize().y + 10.f);
     painelInfo.setFillColor(sf::Color(30, 35, 45, 230)); // Escuro semitransparente
     painelInfo.setOutlineColor(sf::Color(100, 100, 120));
     painelInfo.setOutlineThickness(1.f);
@@ -153,17 +168,25 @@ int main() {
                 sf::Vector2i pixel(event.mouseButton.x, event.mouseButton.y);
                 sf::Vector2f pixelF(static_cast<float>(pixel.x),
                                     static_cast<float>(pixel.y));
+                
+                // NOVO: Lógica do botão INFO
+                if (botaoInfo.getGlobalBounds().contains(pixelF)) {
+                    painelVisivel = !painelVisivel;
+                    std::cout << "[GUI] Botao INFO clicado. Painel Visivel=" << painelVisivel << "\n";
+                    continue; // Pula outras verificações de clique
+                }
 
                 if (botaoNovo.getGlobalBounds().contains(pixelF)) {
                     int novoId = mina.criarNovoCaminhao();
                     std::cout << "[GUI] Botao + clicado. Novo caminhao id=" << novoId << "\n";
                     if (mina.quantidadeCaminhoes() == 1) {
                         idSelecionado = novoId;
+                        painelVisivel = true; // Força o painel a aparecer ao criar
                     }
                     continue;
                 }
 
-                if (idSelecionado != -1) {
+                if (idSelecionado != -1 && painelVisivel) { // Adicionada a condição painelVisivel
                     if (painelBotaoAuto.getGlobalBounds().contains(pixelF)) {
                         mina.getCaminhaoPorId(idSelecionado).comandarAutomatico();
                         continue;
@@ -190,7 +213,7 @@ int main() {
                     }
                 }
 
-                // Logica de clique no mapa
+                // Logica de clique no mapa (Selecionar ou Mover)
                 std::vector<CaminhaoDrawInfo> infos;
                 infos.reserve(mina.quantidadeCaminhoes());
 
@@ -228,6 +251,7 @@ int main() {
 
                 if (idClicado != -1 && melhorDist <= LIMITE_CLICK) {
                     idSelecionado = idClicado;
+                    painelVisivel = true; // Força o painel a aparecer ao selecionar
                 } else if (idSelecionado != -1) {
                     double worldX = (static_cast<double>(pixel.x) - ORIGEM_X) / SCALE;
                     double worldY = (ORIGEM_Y - static_cast<double>(pixel.y)) / SCALE;
@@ -238,11 +262,12 @@ int main() {
                                          static_cast<int>(std::lround(worldX)),
                                          static_cast<int>(std::lround(worldY)));
                         cSel.comandarAutomatico();
+                        painelVisivel = true; // Força o painel a aparecer ao dar um comando
                     }
                 }
             }
             else if (event.type == sf::Event::KeyPressed) {
-                if (idSelecionado != -1) {
+                if (idSelecionado != -1 && !painelVisivel) { // Permite controle mesmo com painel oculto
                     Caminhao& cSel = mina.getCaminhaoPorId(idSelecionado);
                     if (event.key.code == sf::Keyboard::W) cSel.setComandoAcelerar(true);
                     if (event.key.code == sf::Keyboard::A) { cSel.setComandoEsquerda(true); cSel.setComandoDireita(false); }
@@ -250,7 +275,7 @@ int main() {
                 }
             }
             else if (event.type == sf::Event::KeyReleased) {
-                if (idSelecionado != -1) {
+                if (idSelecionado != -1 && !painelVisivel) { // Permite controle mesmo com painel oculto
                     Caminhao& cSel = mina.getCaminhaoPorId(idSelecionado);
                     if (event.key.code == sf::Keyboard::W) cSel.setComandoAcelerar(false);
                     if (event.key.code == sf::Keyboard::A) cSel.setComandoEsquerda(false);
@@ -368,6 +393,22 @@ int main() {
         window.draw(botaoNovo);
         desenharMais(window);
 
+        // NOVO: Desenha o botão INFO e seu texto
+        sf::Color infoBtnColor = painelVisivel ? sf::Color(100, 100, 100) : sf::Color(70, 80, 100);
+        botaoInfo.setFillColor(infoBtnColor);
+        window.draw(botaoInfo);
+        if (fonteOk) {
+             sf::Text infoTxt = criarTexto(painelVisivel ? "OCULTAR" : "INFO", 0, 0, 12);
+             sf::FloatRect bounds = botaoInfo.getLocalBounds();
+             sf::FloatRect textBounds = infoTxt.getLocalBounds();
+             infoTxt.setPosition(
+                 botaoInfo.getPosition().x + (bounds.width - textBounds.width) / 2.0f,
+                 botaoInfo.getPosition().y + (bounds.height - textBounds.height) / 2.0f - 2.0f
+             );
+             window.draw(infoTxt);
+        }
+
+
         RegistroBuffer regSel{};
         bool temRegSel = false;
 
@@ -471,8 +512,8 @@ int main() {
                      float spY = ORIGEM_Y - static_cast<float>(reg.setpoints.sp_posicao_y) * SCALE;
                      
                      sf::Vertex linhaRota[] = {
-                         sf::Vertex(sf::Vector2f(xTela, yTela), sf::Color(0, 255, 0, 100)),
-                         sf::Vertex(sf::Vector2f(spX, spY), sf::Color(0, 255, 0, 100))
+                          sf::Vertex(sf::Vector2f(xTela, yTela), sf::Color(0, 255, 0, 100)),
+                          sf::Vertex(sf::Vector2f(spX, spY), sf::Color(0, 255, 0, 100))
                      };
                      window.draw(linhaRota, 2, sf::Lines);
 
@@ -485,8 +526,8 @@ int main() {
             }
         }
 
-        // 6. Painel Lateral (HUD)
-        if (idSelecionado != -1 && temRegSel) {
+        // 6. Painel Lateral (HUD) - DESENHA SOMENTE SE VISÍVEL
+        if (painelVisivel && idSelecionado != -1 && temRegSel) {
             
             // Cores de estado para botoes (Feedback visual)
             sf::Color corAtiva   = sf::Color(46, 204, 113); // Verde
