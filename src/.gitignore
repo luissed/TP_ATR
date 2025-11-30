@@ -1,4 +1,4 @@
-# Build folders
+# Build directories
 build/
 out/
 bin/
@@ -19,15 +19,5 @@ compile_commands.json
 # CSV gerados
 *.csv
 
-# Qt/GUI caches (se tiver)
-moc_*
-qrc_*
-ui_*
-
 # VSCode
 .vscode/
-
-# Linux/Mac caches
-*.swp
-*.swo
-.DS_Store
