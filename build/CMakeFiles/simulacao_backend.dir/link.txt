@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/simulacao_backend.dir/src/main.cpp.o CMakeFiles/simulacao_backend.dir/src/BufferCircular.cpp.o CMakeFiles/simulacao_backend.dir/src/Caminhao.cpp.o CMakeFiles/simulacao_backend.dir/src/FilaEventos.cpp.o CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o -o simulacao_backend  -lpaho-mqttpp3 -lpaho-mqtt3a 
