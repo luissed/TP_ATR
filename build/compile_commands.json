@@ -1,0 +1,32 @@
+[
+{
+  "directory": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build",
+  "command": "/usr/bin/c++  -I\"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/include\" -std=gnu++17 -o CMakeFiles/simulacao_backend.dir/src/main.cpp.o -c \"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/main.cpp\"",
+  "file": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/main.cpp",
+  "output": "CMakeFiles/simulacao_backend.dir/src/main.cpp.o"
+},
+{
+  "directory": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build",
+  "command": "/usr/bin/c++  -I\"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/include\" -std=gnu++17 -o CMakeFiles/simulacao_backend.dir/src/BufferCircular.cpp.o -c \"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/BufferCircular.cpp\"",
+  "file": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/BufferCircular.cpp",
+  "output": "CMakeFiles/simulacao_backend.dir/src/BufferCircular.cpp.o"
+},
+{
+  "directory": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build",
+  "command": "/usr/bin/c++  -I\"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/include\" -std=gnu++17 -o CMakeFiles/simulacao_backend.dir/src/Caminhao.cpp.o -c \"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/Caminhao.cpp\"",
+  "file": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/Caminhao.cpp",
+  "output": "CMakeFiles/simulacao_backend.dir/src/Caminhao.cpp.o"
+},
+{
+  "directory": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build",
+  "command": "/usr/bin/c++  -I\"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/include\" -std=gnu++17 -o CMakeFiles/simulacao_backend.dir/src/FilaEventos.cpp.o -c \"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/FilaEventos.cpp\"",
+  "file": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/FilaEventos.cpp",
+  "output": "CMakeFiles/simulacao_backend.dir/src/FilaEventos.cpp.o"
+},
+{
+  "directory": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build",
+  "command": "/usr/bin/c++  -I\"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/include\" -std=gnu++17 -o CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o -c \"/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/SimulacaoMina.cpp\"",
+  "file": "/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/src/SimulacaoMina.cpp",
+  "output": "CMakeFiles/simulacao_backend.dir/src/SimulacaoMina.cpp.o"
+}
+]

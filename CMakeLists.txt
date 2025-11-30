@@ -42,23 +42,6 @@ target_link_libraries(simulacao_backend
     paho-mqttpp3          # Wrapper C++ do MQTT
     paho-mqtt3a           # Biblioteca C Assíncrona do MQTT
     Threads::Threads      # Pthreads
+    sfml-graphics sfml-window sfml-system
+
 )
-
-# --- 5. EXECUTÁVEL 2: GUI DE GESTÃO (SFML) ---
-# Este é o programa que mostra o mapa (Se você tiver o main_gui.cpp)
-if(SFML_FOUND)
-    add_executable(gui_gestao
-        src/main_gui.cpp      # Arquivo que contém o main() da interface gráfica
-        ${COMMON_SOURCES}
-    )
-
-    target_link_libraries(gui_gestao
-        paho-mqttpp3
-        paho-mqtt3a
-        Threads::Threads
-        sfml-graphics sfml-window sfml-system
-    )
-    message(STATUS "SFML encontrada. Executável 'gui_gestao' será gerado.")
-else()
-    message(WARNING "SFML não encontrada. 'gui_gestao' não será gerado.")
-endif()

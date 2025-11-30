@@ -1,0 +1,3 @@
+/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build/CMakeFiles/simulacao_backend.dir
+/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build/CMakeFiles/edit_cache.dir
+/mnt/c/Users/amnda/Downloads/ATR- PROJETO/TP_ATR/build/CMakeFiles/rebuild_cache.dir

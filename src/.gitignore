@@ -1,0 +1,33 @@
+# Build folders
+build/
+out/
+bin/
+obj/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# CSV gerados
+*.csv
+
+# Qt/GUI caches (se tiver)
+moc_*
+qrc_*
+ui_*
+
+# VSCode
+.vscode/
+
+# Linux/Mac caches
+*.swp
+*.swo
+.DS_Store

@@ -329,7 +329,6 @@ void Caminhao::tarefaControleNavegacao() {
         AtuadoresCaminhao atu;
         { std::lock_guard<std::mutex> l(mtxAtuadores_); atu = atuadores_; }
 
-        // --- BLOCO DE FÍSICA (SIMULAÇÃO) ---
         {
             std::lock_guard<std::mutex> l(mtxFisico_);
             
@@ -365,7 +364,7 @@ void Caminhao::tarefaControleNavegacao() {
             if (em_reducao_seguranca_) {
                 novosAtu.o_aceleracao = 0; 
             }
-            // 2. Automático (Navegação por Waypoint)
+            // 2. Automático 
             else if (ests.e_automatico && !temDefeito) {
                 double dx = static_cast<double>(sp.sp_posicao_x - s.i_posicao_x);
                 double dy = static_cast<double>(sp.sp_posicao_y - s.i_posicao_y);
