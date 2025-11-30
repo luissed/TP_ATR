@@ -1,3 +1,4 @@
+// src/BufferCircular.cpp
 #include "BufferCircular.hpp"
 
 BufferCircular::BufferCircular(std::size_t capacidade)

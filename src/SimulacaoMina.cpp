@@ -1,13 +1,35 @@
+// src/SimulacaoMina.cpp
 #include "SimulacaoMina.hpp"
 
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <stdexcept>
-#include <cmath> // Para calculo de distancia (sqrt, pow)
+#include <cmath>   // sqrt, pow
+#include <random>  // para spawn aleatorio
 
 using namespace std::chrono_literals;
 
+// -----------------------------------------------------------------------------
+// Parametros de spawn (coordenadas em "metros" do mundo)
+// Janela: 1920x1080, ORIGEM = centro, SCALE = 4 px/m
+// Mundo visivel aproximadamente:
+//   X ∈ [-240, 240], Y ∈ [-135, 135]
+// Vamos limitar um pouco para nao colar na borda:
+// -----------------------------------------------------------------------------
+namespace {
+    constexpr double SPAWN_X_MIN      = -220.0;
+    constexpr double SPAWN_X_MAX      =  220.0;
+    constexpr double SPAWN_Y_MIN      = -120.0;
+    constexpr double SPAWN_Y_MAX      =  120.0;
+    // distancia minima entre centros de caminhões ao nascer
+    constexpr double SPAWN_DIST_MIN   = 25.0; // metros (2~3 "quadradinhos" de 10m)
+    constexpr int    SPAWN_MAX_TRIES  = 200;
+}
+
+// ============================================================================
+// Construtor / Destrutor
+// ============================================================================
 SimulacaoMina::SimulacaoMina(int numCaminhoes, std::size_t capacidadeBufferPadrao)
     : capacidadeBufferPadrao_(capacidadeBufferPadrao),
       rodando_(false)
@@ -16,7 +38,7 @@ SimulacaoMina::SimulacaoMina(int numCaminhoes, std::size_t capacidadeBufferPadra
 
     caminhoes_.reserve(static_cast<std::size_t>(numCaminhoes));
 
-    // Criação inicial (sequencial, não precisa de proteção extra aqui)
+    // Criação inicial (sequencial, garagem linear)
     for (int i = 0; i < numCaminhoes; ++i) {
         criarNovoCaminhao(capacidadeBufferPadrao);
     }
@@ -26,6 +48,9 @@ SimulacaoMina::~SimulacaoMina() {
     parar();
 }
 
+// ============================================================================
+// Controle global de execucao
+// ============================================================================
 void SimulacaoMina::iniciar() {
     if (rodando_) return;
 
@@ -71,7 +96,9 @@ void SimulacaoMina::parar() {
     if (mqtt_) mqtt_->desconectar();
 }
 
-// --- Criação de Caminhões (Com Garagem e Thread-Safety) ---
+// ============================================================================
+// Criacao de Caminhoes (com garagem + spawn aleatorio visivel)
+// ============================================================================
 int SimulacaoMina::criarNovoCaminhao(std::size_t capacidadeBuffer) {
     // Bloqueia o vetor para proteger contra a thread de segurança
     std::lock_guard<std::mutex> lock(mtxCaminhoes_); 
@@ -80,39 +107,115 @@ int SimulacaoMina::criarNovoCaminhao(std::size_t capacidadeBuffer) {
 
     int novoId = static_cast<int>(caminhoes_.size()) + 1;
     auto cam = std::make_unique<Caminhao>(novoId, capacidadeBuffer);
-    
-    // --- CORREÇÃO DA GARAGEM ---
-    // Define posição inicial diferente para cada ID (0, 30, 60...)
-    // Isso evita que nasçam batendo uns nos outros.
-    int posX = (novoId - 1) * 30; 
-    cam->definirRota(posX, 0, posX, 0);
-    // ---------------------------
-    
+
+    // Ponteiro cru para poder iniciar depois, fora do unique_ptr
     Caminhao* ptrCru = cam.get();
+
+    // ---------------------- CASO 1: Sistema ainda nao rodando ----------------
+    // Usamos a "garagem" linear no eixo X (como antes), bom para testes.
+    if (!rodando_) {
+        int posX = (novoId - 1) * 30;  // 0, 30, 60, ...
+        int posY = 0;
+        cam->definirRota(posX, posY, posX, posY);
+
+        caminhoes_.push_back(std::move(cam));
+
+        std::cout << "[SimulacaoMina] Novo caminhao ID " << novoId 
+                  << " criado na garagem (X=" << posX << ", Y=" << posY << ").\n";
+
+        // Ainda nao chamamos iniciar() aqui, isso é feito em iniciar()
+        return novoId;
+    }
+
+    // ------------------- CASO 2: Sistema rodando (botao + / MQTT) ------------
+    // Agora queremos spawn ALEATORIO, DENTRO da area visivel, sem colidir.
+
+    // RNG estático pra nao re-seedar toda hora
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<double> distX(SPAWN_X_MIN, SPAWN_X_MAX);
+    std::uniform_real_distribution<double> distY(SPAWN_Y_MIN, SPAWN_Y_MAX);
+
+    double spawnX = 0.0;
+    double spawnY = 0.0;
+    bool   found  = false;
+
+    for (int tentativa = 0; tentativa < SPAWN_MAX_TRIES && !found; ++tentativa) {
+        double candX = distX(rng);
+        double candY = distY(rng);
+
+        bool ok = true;
+
+        // Checa distancia para todos caminhões existentes que estejam com dado no buffer
+        for (auto& cPtr : caminhoes_) {
+            RegistroBuffer reg{};
+            if (!cPtr->lerUltimoRegistro(reg)) {
+                // Se ainda nao tem dado (acabou de nascer etc.), ignoramos.
+                continue;
+            }
+
+            double dx = candX - static_cast<double>(reg.sensores.i_posicao_x);
+            double dy = candY - static_cast<double>(reg.sensores.i_posicao_y);
+            double d2 = dx*dx + dy*dy;
+
+            if (d2 < SPAWN_DIST_MIN * SPAWN_DIST_MIN) {
+                ok = false;
+                break;
+            }
+        }
+
+        if (ok) {
+            spawnX = candX;
+            spawnY = candY;
+            found  = true;
+        }
+    }
+
+    if (!found) {
+        // Fallback: se a tela estiver "lotada", cai na logica antiga linear
+        int posX = (novoId - 1) * 30;
+        int posY = 0;
+        cam->definirRota(posX, posY, posX, posY);
+
+        caminhoes_.push_back(std::move(cam));
+
+        std::cout << "[SimulacaoMina] [AVISO] Nao foi possivel achar spawn sem colisao para ID "
+                  << novoId << ". Usando fallback (garagem): X=" << posX << ", Y=" << posY << ".\n";
+
+        // Como rodando_ == true, ja iniciamos as tarefas do novo caminhao
+        ptrCru->iniciar();
+        return novoId;
+    }
+
+    // Posicao aleatoria segura dentro da janela
+    int spawnXi = static_cast<int>(std::lround(spawnX));
+    int spawnYi = static_cast<int>(std::lround(spawnY));
+
+    cam->definirRota(spawnXi, spawnYi, spawnXi, spawnYi);
     caminhoes_.push_back(std::move(cam));
 
-    std::cout << "[SimulacaoMina] Novo caminhao ID " << novoId 
-              << " criado na posicao X=" << posX << ".\n";
+    std::cout << "[SimulacaoMina] Novo caminhao ID " << novoId
+              << " spawnado em (" << spawnXi << ", " << spawnYi << ") dentro da tela.\n";
 
-    if (rodando_) {
-        ptrCru->iniciar();
-    }
+    // Como rodando_ == true, iniciamos o caminhao imediatamente
+    ptrCru->iniciar();
 
     return novoId;
 }
 
-// --- Callback MQTT (Com Correção de Thread) ---
-void SimulacaoMina::processarMensagemCentral(const std::string& topico, const std::string& payload) {
+// ============================================================================
+// Callback MQTT (Central)
+// ============================================================================
+void SimulacaoMina::processarMensagemCentral(const std::string& /*topico*/, const std::string& payload) {
     std::cout << "[Mina Recv] " << payload << "\n";
     
     if (payload == "CMD:CRIAR_CAMINHAO") {
+        // cria um caminhao em thread separada para nao travar callback do MQTT
         std::thread([this]() {
             this->criarNovoCaminhao();
         }).detach();
     }
    
     else if (payload.rfind("CMD:FALHA_TEMP:", 0) == 0) {
-        // Exemplo: CMD:FALHA_TEMP:1 (Injeta no caminhao 1)
         int id = std::stoi(payload.substr(15));
         try { 
             injetarFalhaTemperatura(id); 
@@ -133,14 +236,15 @@ void SimulacaoMina::processarMensagemCentral(const std::string& topico, const st
             std::cout << "[Simulacao] Injetando Falha Hidraulica no ID " << id << "\n"; 
         } catch(...) { std::cerr << "Erro ao injetar falha\n"; }
     }
-    // -----------------------------
+    // (pode expandir para outros comandos no futuro)
 }
 
-// --- Monitoramento de Segurança ---
+// ============================================================================
+// Monitoramento de Segurança (Anti-colisao)
+// ============================================================================
 void SimulacaoMina::tarefaMonitoramentoSeguranca() {
-   // const double DIST_ALERTA = 25.0;
-    const double DIST_ALERTA = 10.0;
-
+    // const double DIST_ALERTA = 25.0;
+    const double DIST_ALERTA  = 10.0;
     const double DIST_CRITICA = 5.0;
 
     while (rodando_) {
@@ -161,8 +265,8 @@ void SimulacaoMina::tarefaMonitoramentoSeguranca() {
                     if (dist < DIST_CRITICA) {
                         std::cerr << "[COLISAO] EMERGENCIA! ID " << rI.id_caminhao 
                                   << " e " << rJ.id_caminhao << " (Dist: " << dist << "m)\n";
-                      caminhoes_[i]->comandarParadaEmergencia(); // <--- ALTERADO
-    caminhoes_[j]->comandarParadaEmergencia(); // <--- ALTERADO
+                        caminhoes_[i]->comandarParadaEmergencia();
+                        caminhoes_[j]->comandarParadaEmergencia();
                     }
 
                     else if (dist < DIST_ALERTA) {
@@ -180,7 +284,9 @@ void SimulacaoMina::tarefaMonitoramentoSeguranca() {
     }
 }
 
-// --- Getters ---
+// ============================================================================
+// Getters / Utilitários
+// ============================================================================
 Caminhao& SimulacaoMina::getCaminhaoPorId(int id) {
     std::lock_guard<std::mutex> lock(mtxCaminhoes_);
     for (auto& c : caminhoes_) if (c->getId() == id) return *c;
@@ -193,7 +299,7 @@ const Caminhao& SimulacaoMina::getCaminhaoPorId(int id) const {
 }
 
 void SimulacaoMina::injetarFalhaTemperatura(int id) { getCaminhaoPorId(id).injetarFalhaTemperaturaAlta(); }
-void SimulacaoMina::injetarFalhaEletrica(int id) { getCaminhaoPorId(id).injetarFalhaEletrica(); }
+void SimulacaoMina::injetarFalhaEletrica(int id)   { getCaminhaoPorId(id).injetarFalhaEletrica(); }
 void SimulacaoMina::injetarFalhaHidraulica(int id) { getCaminhaoPorId(id).injetarFalhaHidraulica(); }
 
 void SimulacaoMina::definirRotaCaminhao(int id, int x1, int y1, int x2, int y2) {
@@ -201,11 +307,12 @@ void SimulacaoMina::definirRotaCaminhao(int id, int x1, int y1, int x2, int y2) 
 }
 
 void SimulacaoMina::imprimirMapaTexto() const {
-    // std::lock_guard<std::mutex> lock(mtxCaminhoes_); // (Opcional no print de debug)
     for (const auto& cPtr : caminhoes_) {
         RegistroBuffer reg{};
         if (cPtr->lerUltimoRegistro(reg))
-            std::cout << "ID: " << cPtr->getId() << " Pos: " << reg.sensores.i_posicao_x << "\n";
+            std::cout << "ID: " << cPtr->getId()
+                      << " Pos: (" << reg.sensores.i_posicao_x << ", "
+                                   << reg.sensores.i_posicao_y << ")\n";
     }
 }
 

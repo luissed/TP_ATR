@@ -1,3 +1,4 @@
+// src/FilaEventos.cpp
 #include "FilaEventos.hpp"
 
 // posta um evento na fila e acorda uma thread que estiver esperando

@@ -5,25 +5,21 @@ LDFLAGS  = -lsfml-graphics -lsfml-window -lsfml-system -pthread -lpaho-mqttpp3 -
 
 SRC_DIR  = src
 
-# Lista de objetos comuns a ambos os programas
+# Lista de objetos comuns ao programa
 COMMON_OBJS = \
 	$(SRC_DIR)/BufferCircular.o \
 	$(SRC_DIR)/Caminhao.o \
 	$(SRC_DIR)/FilaEventos.o \
 	$(SRC_DIR)/SimulacaoMina.o
 
-# Definir os dois executáveis que queremos gerar
+# Executável principal
 TARGET_BACKEND = simulacao_backend
-TARGET_GUI     = gui_gestao
 
-all: $(TARGET_BACKEND) $(TARGET_GUI)
+# Só vamos construir esse executável
+all: $(TARGET_BACKEND)
 
-# Regra para o Backend (Lógica)
+# Regra para o Backend (usa src/main.cpp)
 $(TARGET_BACKEND): $(COMMON_OBJS) $(SRC_DIR)/main.o
-	$(CXX) $^ -o $@ $(LDFLAGS)
-
-# Regra para a GUI (Interface)
-$(TARGET_GUI): $(COMMON_OBJS) $(SRC_DIR)/main_gui.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 # Regra genérica de compilação
@@ -31,4 +27,4 @@ $(TARGET_GUI): $(COMMON_OBJS) $(SRC_DIR)/main_gui.o
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(TARGET_BACKEND) $(TARGET_GUI) main
+	rm -f $(SRC_DIR)/*.o $(TARGET_BACKEND) main
