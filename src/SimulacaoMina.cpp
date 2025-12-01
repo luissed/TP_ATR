@@ -198,8 +198,8 @@ void SimulacaoMina::processarMensagemCentral(const std::string& /*topico*/, cons
 }
 
 void SimulacaoMina::tarefaMonitoramentoSeguranca() {
-    const double DIST_ALERTA  = 10.0;
-    const double DIST_CRITICA = 5.0;
+    const double DIST_ALERTA  = 20.0;
+    const double DIST_CRITICA = 12.0;
 
     while (rodando_) {
         {
@@ -234,7 +234,7 @@ void SimulacaoMina::tarefaMonitoramentoSeguranca() {
                 caminhoes_[i]->setReducaoSeguranca(precisaReduzir[i]);
             }
         } 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
