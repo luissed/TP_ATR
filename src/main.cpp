@@ -11,6 +11,7 @@ namespace {
     constexpr double PI = 3.14159265358979323846;
 }
 
+// ... (Estrutura CaminhaoDrawInfo e função criarBotaoEstiloso permanecem iguais) ...
 struct CaminhaoDrawInfo {
     int   id;
     bool  temDados;
@@ -27,6 +28,7 @@ sf::RectangleShape criarBotaoEstiloso(sf::Vector2f tamanho, sf::Vector2f pos, sf
     shape.setOutlineThickness(1.0f);
     return shape;
 }
+
 
 int main() {
     std::cout << "GUI Gestao da Mina\n";
@@ -97,6 +99,7 @@ int main() {
     // fonte para textos do painel lateral
     sf::Font fonte;
     bool fonteOk = false;
+    // O caminho da fonte é específico do seu sistema. Mantenho o original:
     if (fonte.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
         fonteOk = true;
     } else {
@@ -117,7 +120,7 @@ int main() {
 
     // painel lateral de telemetria e comandos
     const float painelWidth  = 260.f;
-    const float painelHeight = 300.f;
+    const float painelHeight = 300.f; // Tamanho original mantido
     sf::RectangleShape painelInfo(sf::Vector2f(painelWidth, painelHeight));
     painelInfo.setPosition(WINDOW_WIDTH - painelWidth - 10.f,
                            botaoInfo.getPosition().y + botaoInfo.getSize().y + 10.f);
@@ -133,7 +136,7 @@ int main() {
     float colEsqX = painelX + 15.f;
     float colDirX = colEsqX + 90.f;
 
-    sf::RectangleShape painelBotaoAuto   = criarBotaoEstiloso(sf::Vector2f(80.f, 24.f), sf::Vector2f(colEsqX, linha1Y), sf::Color::Black);
+    sf::RectangleShape painelBotaoAuto    = criarBotaoEstiloso(sf::Vector2f(80.f, 24.f), sf::Vector2f(colEsqX, linha1Y), sf::Color::Black);
     sf::RectangleShape painelBotaoManual = criarBotaoEstiloso(sf::Vector2f(80.f, 24.f), sf::Vector2f(colDirX, linha1Y), sf::Color::Black);
 
     float linha2Y = linha1Y + 35.f;
@@ -274,7 +277,7 @@ int main() {
             }
         }
 
-        // --- DESENHO ---        
+        // --- DESENHO ---         
         window.clear(sf::Color(210, 200, 180)); 
 
         // GRID
@@ -468,7 +471,7 @@ int main() {
             window.draw(vidro);
 
             if (selecionado) {
-                regSel   = reg;
+                regSel  = reg;
                 temRegSel = true;
                 
                 if (modoAuto) {
@@ -477,7 +480,7 @@ int main() {
                      
                      sf::Vertex linhaRota[] = {
                           sf::Vertex(sf::Vector2f(xTela, yTela), sf::Color(0, 255, 0, 100)),
-                          sf::Vertex(sf::Vector2f(spX, spY),     sf::Color(0, 255, 0, 100))
+                          sf::Vertex(sf::Vector2f(spX, spY),      sf::Color(0, 255, 0, 100))
                      };
                      window.draw(linhaRota, 2, sf::Lines);
 
@@ -522,10 +525,13 @@ int main() {
             window.draw(painelBotaoManual);
             window.draw(painelBotaoRearme);
             
+            // --- INÍCIO DA MUDANÇA (Separação visual) ---
+            // A linha separadora deve vir depois dos botões de falha
             sf::RectangleShape linhaSep(sf::Vector2f(painelWidth - 20.f, 1.f));
-            linhaSep.setPosition(painelX + 10.f, linha2Y + 40.f);
+            linhaSep.setPosition(painelX + 10.f, falhaY + 52.f + 30.f); // Posição ajustada para ficar após o último botão de falha
             linhaSep.setFillColor(sf::Color(100, 100, 100));
             window.draw(linhaSep);
+            // --- FIM DA MUDANÇA ---
 
             window.draw(painelBotaoFalhaTemp);
             window.draw(painelBotaoFalhaElec);
@@ -552,18 +558,24 @@ int main() {
                 drawBtnText("F. HIDR", painelBotaoFalhaHid);
 
                 float xBase = painelX + 15.f;
-                float yBase = linha2Y + 50.f;
+                // --- INÍCIO DA MUDANÇA (Posição vertical dos dados) ---
+                // Agora, yBase é calculado para começar logo após a linha separadora
+                float yBase = linhaSep.getPosition().y + 10.f; 
+                // --- FIM DA MUDANÇA ---
                 float dy    = 18.f;
                 int l       = 0;
 
                 sf::Text titulo = criarTexto("CAMINHAO #" + std::to_string(idSelecionado),
                                              xBase, yBase, 16, sf::Color(100, 200, 255));
                 window.draw(titulo);
-                yBase += 25.f;
+                yBase += 25.f; // Ajuste para a próxima linha de dados começar 25 pixels abaixo do título
 
                 auto desenharDado = [&](std::string label, std::string val, sf::Color corVal = sf::Color::White) {
                     window.draw(criarTexto(label, xBase, yBase + l*dy, 12, sf::Color(180, 180, 180)));
-                    window.draw(criarTexto(val,   xBase + 80.f, yBase + l*dy, 12, corVal));
+                    // --- MUDANÇA DE ALINHAMENTO DO VALOR ---
+                    // Alinha o valor um pouco mais para a direita para evitar sobreposição
+                    window.draw(criarTexto(val,   xBase + 100.f, yBase + l*dy, 12, corVal)); 
+                    // --- FIM DA MUDANÇA ---
                     l++;
                 };
 
@@ -581,18 +593,22 @@ int main() {
                 desenharDado("Temp:", std::to_string(regSel.sensores.i_temperatura) + " C", corTemp);
                 
                 l++;
-                window.draw(criarTexto("Acel:", xBase, yBase + l*dy, 12));
+                
+                // --- MUDANÇA DE POSICIONAMENTO DA BARRA DE ACELERAÇÃO ---
+                // Ajusta a posição da barra para que ela fique mais alinhada com os outros dados
+                window.draw(criarTexto("Acel:", xBase, yBase + l*dy + 3.f, 12)); 
                 sf::RectangleShape barraFundo(sf::Vector2f(100.f, 6.f));
-                barraFundo.setPosition(xBase + 40.f, yBase + l*dy + 6.f);
+                barraFundo.setPosition(xBase + 100.f, yBase + l*dy + 6.f); // Ajuste de X para alinhamento
                 barraFundo.setFillColor(sf::Color(50,50,50));
                 window.draw(barraFundo);
                 
                 float pct = std::abs(regSel.atuadores.o_aceleracao) / 100.0f;
                 if (pct > 1.0f) pct = 1.0f;
                 sf::RectangleShape barra(sf::Vector2f(100.f * pct, 6.f));
-                barra.setPosition(xBase + 40.f, yBase + l*dy + 6.f);
+                barra.setPosition(xBase + 100.f, yBase + l*dy + 6.f); // Ajuste de X para alinhamento
                 barra.setFillColor(regSel.atuadores.o_aceleracao >= 0 ? sf::Color::Cyan : sf::Color::Magenta);
                 window.draw(barra);
+                // --- FIM DA MUDANÇA ---
             }
         }
 
